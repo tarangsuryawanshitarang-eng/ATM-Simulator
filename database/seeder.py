@@ -17,12 +17,12 @@ from database.connection import get_db_connection, immediate_transaction
 
 # 100 Authentic Indian Demo Account Profiles
 INDIAN_NAMES = [
-    ("Aarav Sharma", "1234", 2500.0, 0, 0),         # 10001
-    ("Vivaan Patel", "4321", 1000.0, 0, 0),         # 10002
+    ("Tarang Suryawanshi", "1234", 2500.0, 0, 0),   # 10001 (Lead Developer)
+    ("Sameep Patel", "4321", 1000.0, 0, 0),         # 10002 (Project Partner)
     ("Diya Iyer", "9999", 50.0, 0, 0),              # 10003
     ("Aditya Verma", "0000", 300.0, 1, 3),          # 10004 (Locked Demo)
-    ("Tarang Suryawanshi", "1111", 5000.0, 0, 0),   # 10005
-    ("Sameep Patel", "2222", 7500.0, 0, 0),         # 10006
+    ("Aarav Sharma", "1111", 5000.0, 0, 0),         # 10005
+    ("Vivaan Patel", "2222", 7500.0, 0, 0),         # 10006
     ("Ananya Gupta", "3333", 12000.0, 0, 0),        # 10007
     ("Rahul Deshmukh", "4444", 3200.0, 0, 0),       # 10008
     ("Sneha Joshi", "5555", 1500.0, 0, 0),          # 10009

@@ -11,23 +11,23 @@ Use these pre-configured accounts during your presentation for specific demo flo
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  DEMO CASE 1: Standard Cash Withdrawal & Thermal Receipt                                │
+│  DEMO CASE 1: Lead Developer Account (Primary Presentation Account)                    │
 │  • Account Number : 10001                                                              │
-│  • Account Holder : Aarav Sharma                                                       │
+│  • Account Holder : Tarang Suryawanshi (Lead Developer)                                │
 │  • Security PIN   : 1234                                                               │
 │  • Balance        : $2,500.00 (Status: 🟢 ACTIVE)                                      │
-│  • Best For       : Demonstrating Fast Cash ($500) & Animated Banknote Dispenser       │
+│  • Best For       : Standard Cash Withdrawal, Masked PIN, & Thermal Receipts           │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  DEMO CASE 2: Developer Account & Cash Deposit Flow                                    │
-│  • Account Number : 10005                                                              │
-│  • Account Holder : Tarang Suryawanshi                                                 │
-│  • Security PIN   : 1111                                                               │
-│  • Balance        : $5,000.00 (Status: 🟢 ACTIVE)                                      │
-│  • Best For       : Demonstrating automated cash intake & instant balance update       │
+│  DEMO CASE 2: Project Partner Account                                                  │
+│  • Account Number : 10002                                                              │
+│  • Account Holder : Sameep Patel (Project Partner)                                     │
+│  • Security PIN   : 4321                                                               │
+│  • Balance        : $1,000.00 (Status: 🟢 ACTIVE)                                      │
+│  • Best For       : Cash Deposit flow & Mini-Statement verification                    │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -72,12 +72,12 @@ Use these pre-configured accounts during your presentation for specific demo flo
 
 | Account # | Account Holder | PIN | Balance ($) | Status | Suggested Use Case |
 | :---: | :--- | :---: | :---: | :---: | :--- |
-| **`10001`** | Aarav Sharma | `1234` | `$2,500.00` | 🟢 Active | Primary Demo Account |
-| **`10002`** | Vivaan Patel | `4321` | `$1,000.00` | 🟢 Active | Fast Cash Withdrawals |
+| **`10001`** | **Tarang Suryawanshi** | `1234` | `$2,500.00` | 🟢 Active | **Lead Developer / Primary Demo** |
+| **`10002`** | **Sameep Patel** | `4321` | `$1,000.00` | 🟢 Active | **Project Partner / Fast Cash** |
 | **`10003`** | Diya Iyer | `9999` | `$50.00` | 🟢 Active | Low Balance / Insufficient Funds |
 | **`10004`** | Aditya Verma | `0000` | `$300.00` | 🔴 **Locked** | Lockout & Manager Unlock Demo |
-| **`10005`** | Tarang Suryawanshi | `1111` | `$5,000.00` | 🟢 Active | Cash Deposit Demonstration |
-| **`10006`** | Sameep Patel | `2222` | `$7,500.00` | 🟢 Active | High Balance Transactions |
+| **`10005`** | Aarav Sharma | `1111` | `$5,000.00` | 🟢 Active | Cash Deposit Demonstration |
+| **`10006`** | Vivaan Patel | `2222` | `$7,500.00` | 🟢 Active | High Balance Transactions |
 | **`10007`** | Ananya Gupta | `3333` | `$12,000.00` | 🟢 Active | General Banking |
 | **`10008`** | Rahul Deshmukh | `4444` | `$3,200.00` | 🟢 Active | Mini-Statement & PIN Change |
 | **`10009`** | Sneha Joshi | `5555` | `$1,500.00` | 🟢 Active | Standard Withdrawal |
@@ -123,7 +123,7 @@ Use these pre-configured accounts during your presentation for specific demo flo
 ### 🔹 Tier 3: Legends & Veteran Profiles (`10051` – `10075`)
 
 | Account # | Account Holder | PIN | Balance ($) | Status | Account # | Account Holder | PIN | Balance ($) | Status |
-| :---: | :--- | :---: | :---: | :---: | :---: | :--- | :---: | :---: | :---: |
+| :---: | :--- | :---: | :---: | :---: | :--- | :---: | :---: | :---: | :---: |
 | **`10051`** | Kapil Dev | `1983` | `$48,000.00` | 🟢 Active | **`10064`** | Umesh Yadav | `1919` | `$24,000.00` | 🟢 Active |
 | **`10052`** | Sunil Gavaskar | `1000` | `$46,000.00` | 🟢 Active | **`10065`** | Mohammed Shami | `1111` | `$29,500.00` | 🟢 Active |
 | **`10053`** | Ravi Shastri | `1985` | `$36,000.00` | 🟢 Active | **`10066`** | Bhuvneshwar Kumar | `1515` | `$26,000.00` | 🟢 Active |

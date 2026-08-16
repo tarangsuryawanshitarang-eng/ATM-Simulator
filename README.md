@@ -131,12 +131,12 @@ The **Advanced ATM Simulator** models real-world automated banking kiosks with i
 
 | Account Number | Account Holder | PIN | Starting Balance | Initial Status |
 |:---|:---|:---:|:---:|:---:|
-| **`10001`** | Aarav Sharma | `1234` | `$2,500.00` | Active |
-| **`10002`** | Vivaan Patel | `4321` | `$1,000.00` | Active |
+| **`10001`** | Tarang Suryawanshi (Lead Dev) | `1234` | `$2,500.00` | Active |
+| **`10002`** | Sameep Patel (Project Partner) | `4321` | `$1,000.00` | Active |
 | **`10003`** | Diya Iyer | `9999` | `$50.00` | Active |
 | **`10004`** | Aditya Verma | `0000` | `$300.00` | **Locked** (Demo lockout) |
-| **`10005`** | Tarang Suryawanshi | `1111` | `$5,000.00` | Active |
-| **`10006`** | Sameep Patel | `2222` | `$7,500.00` | Active |
+| **`10005`** | Aarav Sharma | `1111` | `$5,000.00` | Active |
+| **`10006`** | Vivaan Patel | `2222` | `$7,500.00` | Active |
 | **`10007`** | Ananya Gupta | `3333` | `$12,000.00` | Active |
 | **`10008`** | Rahul Deshmukh | `4444` | `$3,200.00` | Active |
 | **`10009`** | Sneha Joshi | `5555` | `$1,500.00` | Active |

@@ -62,7 +62,7 @@ class TestSecuritySubsystem(unittest.TestCase):
         """Verifies successful authentication for demo account 10001."""
         account = authenticate_user(self.conn, "10001", "1234")
         self.assertEqual(account["account_number"], "10001")
-        self.assertEqual(account["account_holder"], "Aarav Sharma")
+        self.assertEqual(account["account_holder"], "Tarang Suryawanshi")
         self.assertEqual(account["failed_attempts"], 0)
 
         # Verify audit log recorded SUCCESS
