@@ -1,10 +1,10 @@
 """
 Customer ATM Terminal Entry Point for the Advanced ATM Simulator.
-Provides an authentic, menu-driven customer banking experience for cardholders.
-Administrative and Bank Manager capabilities are handled separately in admin.py.
+Provides a strictly isolated, secure customer banking experience for cardholders.
+Cardholders can ONLY interact with their own account after authentication.
+All bank-wide account inquiries, balances, and diagnostics are strictly restricted to admin.py.
 """
 
-import getpass
 import os
 import sys
 from typing import Dict
@@ -55,30 +55,19 @@ def print_banner() -> None:
     """ + TerminalColor.RESET)
 
 
-def print_demo_credentials() -> None:
-    """Displays test accounts for demonstration purposes."""
-    print(TerminalColor.YELLOW + "\n  [ DEMO ACCOUNTS & PIN CHEAT SHEET ]" + TerminalColor.RESET)
-    print("  " + "-" * 55)
-    print("  Account: 10001 | PIN: 1234 | Alice Smith   | Bal: $2,500.00")
-    print("  Account: 10002 | PIN: 4321 | Bob Jones     | Bal: $1,000.00")
-    print("  Account: 10003 | PIN: 9999 | Charlie Brown | Bal:    $50.00")
-    print("  Account: 10004 | PIN: 0000 | Locked User   | [LOCKED]")
-    print("  " + "-" * 55)
-
-
-def prompt_pin(prompt_text: str = "Enter PIN: ") -> str:
-    """Prompts for PIN securely using getpass or standard input fallback."""
-    try:
-        pin = getpass.getpass(prompt_text)
-        if not pin:
-            pin = input(prompt_text)
-        return pin.strip()
-    except Exception:
-        return input(prompt_text).strip()
+def prompt_pin(prompt_text: str = "Enter 4-Digit Security PIN: ") -> str:
+    """
+    Prompts for PIN reliably across all terminal environments without freezing.
+    """
+    pin = input(f"  {prompt_text}").strip()
+    return pin
 
 
 class CustomerAtmSession:
-    """Manages active customer session state and banking transactions."""
+    """
+    Manages an isolated customer session.
+    Cardholders can strictly only access and manipulate their own account data.
+    """
 
     def __init__(self, account_number: str, account_holder: str):
         self.account_number = account_number
@@ -87,12 +76,12 @@ class CustomerAtmSession:
     def run_menu(self) -> None:
         """Customer transaction loop."""
         while True:
-            print(TerminalColor.BOLD + f"\n  Welcome, {self.account_holder} | Account: {self.account_number}" + TerminalColor.RESET)
+            print(TerminalColor.BOLD + f"\n  Cardholder: {self.account_holder} | Account: {self.account_number}" + TerminalColor.RESET)
             print("  " + "=" * 48)
             print("  [1] Balance Inquiry")
             print("  [2] Cash Withdrawal (Fast Cash / Custom Amount)")
             print("  [3] Cash Deposit (Insert Physical Notes)")
-            print("  [4] Mini-Statement (Recent Transactions)")
+            print("  [4] Mini-Statement (Your Recent Transactions)")
             print("  [5] Change Security PIN")
             print("  [6] Logout & Eject Card")
             print("  " + "=" * 48)
@@ -116,7 +105,7 @@ class CustomerAtmSession:
                 print(TerminalColor.RED + "  [-] Invalid selection. Please choose 1 to 6." + TerminalColor.RESET)
 
     def handle_balance_inquiry(self) -> None:
-        """Queries and presents account balance."""
+        """Queries and presents the cardholder's own account balance."""
         conn = get_db_connection()
         try:
             balance = get_balance(conn, self.account_number)
@@ -127,11 +116,11 @@ class CustomerAtmSession:
             conn.close()
 
     def handle_withdrawal(self) -> None:
-        """Handles fast cash and custom cash withdrawal."""
+        """Handles fast cash and custom cash withdrawal for the active cardholder."""
         print("\n  [ CASH WITHDRAWAL ]")
         print("  Fast Cash: [1] $100  [2] $200  [3] $500  [4] $1,000  [5] $2,000")
         print("  Custom:    [6] Enter other amount")
-        print("  Cancel:    [7] Return to main menu")
+        print("  Cancel:    [7] Return to menu")
 
         fast_cash_map = {"1": 100, "2": 200, "3": 500, "4": 1000, "5": 2000}
         sub_choice = input("  Select withdrawal option [1-7]: ").strip()
@@ -171,7 +160,7 @@ class CustomerAtmSession:
             conn.close()
 
     def handle_deposit(self) -> None:
-        """Handles physical note cash deposit."""
+        """Handles physical note cash deposit for the active cardholder."""
         print("\n  [ CASH DEPOSIT - NOTE INSERTION ]")
         print("  Please insert accepted physical notes ($500, $200, $100):")
         notes: Dict[int, int] = {}
@@ -218,7 +207,7 @@ class CustomerAtmSession:
             conn.close()
 
     def handle_statement(self) -> None:
-        """Retrieves and displays recent transaction history."""
+        """Retrieves and displays recent transaction history strictly for this account."""
         conn = get_db_connection()
         try:
             history = get_transaction_history(conn, self.account_number, limit=10)
@@ -236,11 +225,11 @@ class CustomerAtmSession:
             conn.close()
 
     def handle_change_pin(self) -> None:
-        """Handles PIN modification."""
+        """Handles PIN modification for the active cardholder."""
         print("\n  [ CHANGE SECURITY PIN ]")
-        old_pin = prompt_pin("  Enter Current PIN: ")
-        new_pin = prompt_pin("  Enter New 4 or 6-digit PIN: ")
-        confirm_pin = prompt_pin("  Confirm New PIN: ")
+        old_pin = prompt_pin("Enter Current PIN: ")
+        new_pin = prompt_pin("Enter New 4 or 6-Digit PIN: ")
+        confirm_pin = prompt_pin("Confirm New PIN: ")
 
         if new_pin != confirm_pin:
             print(TerminalColor.RED + "  [-] New PIN and confirmation do not match." + TerminalColor.RESET)
@@ -268,11 +257,10 @@ def customer_main() -> None:
         print("  ║                   WELCOME TO THE ATM                  ║")
         print("  ╚═══════════════════════════════════════════════════════╝")
         print("  [1] Insert ATM Card (Login with Account Number & PIN)")
-        print("  [2] View Demo Accounts & Test PINs")
-        print("  [3] Exit ATM")
+        print("  [2] Exit ATM")
         print("  " + "-" * 55)
 
-        main_choice = input("  Please select an option [1-3]: ").strip()
+        main_choice = input("  Please select an option [1-2]: ").strip()
 
         if main_choice == "1":
             acc_num = input("\n  Insert Card (Enter Account Number, e.g., 10001): ").strip()
@@ -280,7 +268,7 @@ def customer_main() -> None:
                 print(TerminalColor.RED + "  [-] Account number cannot be blank." + TerminalColor.RESET)
                 continue
 
-            pin = prompt_pin("  Enter 4-Digit Security PIN: ")
+            pin = prompt_pin("Enter 4-Digit Security PIN: ")
 
             conn = get_db_connection()
             try:
@@ -300,14 +288,11 @@ def customer_main() -> None:
                 conn.close()
 
         elif main_choice == "2":
-            print_demo_credentials()
-
-        elif main_choice == "3":
             print(TerminalColor.CYAN + "\n  [+] Thank you for using our ATM service. Goodbye!\n" + TerminalColor.RESET)
             break
 
         else:
-            print(TerminalColor.RED + "  [-] Invalid option selected. Please choose 1, 2, or 3." + TerminalColor.RESET)
+            print(TerminalColor.RED + "  [-] Invalid option selected. Please choose 1 or 2." + TerminalColor.RESET)
 
 
 if __name__ == "__main__":
