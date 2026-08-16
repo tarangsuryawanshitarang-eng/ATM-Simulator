@@ -1,270 +1,96 @@
 """
-Transaction Engine for the Advanced ATM Simulator.
-Enforces ACID compliance via explicit BEGIN IMMEDIATE TRANSACTION locking,
-atomic balance updates, physical cassette synchronizations, and audit trail logging.
+Transaction Engine Facade for the Advanced ATM Simulator.
+Provides backward-compatible functional interfaces delegating to BankingTransactionService.
 """
 
 import sqlite3
 from typing import Any, Dict, List, Optional
 
-from core.exceptions import (
-    AccountLockedException,
-    AccountNotFoundException,
-    AtmBaseException,
-    DatabaseTransactionError,
-    InsufficientFundsException,
-    InvalidAmountException,
-)
-from core.security import generate_salt, hash_pin, verify_pin
-from core.vault import deposit_notes, dispense_cash
+from core.domain.transaction import TransactionRecord
+from core.exceptions import AccountNotFoundException
+from core.repositories.account_repo import SqliteAccountRepository
+from core.repositories.transaction_repo import SqliteTransactionRepository
+from core.repositories.vault_repo import SqliteVaultRepository
+from core.services.security import Pbkdf2PepperHashProvider
+from core.services.transaction import BankingTransactionService
+from core.services.vault import VaultManagerService
 from database.connection import immediate_transaction
 
 
-def _log_transaction(
-    conn: sqlite3.Connection,
-    account_number: str,
-    tx_type: str,
-    amount: float,
-    status: str,
-    failure_reason: Optional[str] = None,
-) -> int:
-    """Inserts an immutable audit record into the transactions table."""
-    cursor = conn.execute(
-        """
-        INSERT INTO transactions (account_number, transaction_type, amount, status, failure_reason)
-        VALUES (?, ?, ?, ?, ?);
-        """,
-        (account_number, tx_type, amount, status, failure_reason),
-    )
-    return cursor.lastrowid or 0
+def _get_transaction_service(conn: sqlite3.Connection) -> BankingTransactionService:
+    account_repo = SqliteAccountRepository(conn)
+    tx_repo = SqliteTransactionRepository(conn)
+    vault_repo = SqliteVaultRepository(conn)
+    vault_service = VaultManagerService(vault_repo)
+    hash_provider = Pbkdf2PepperHashProvider()
+    return BankingTransactionService(account_repo, tx_repo, vault_service, hash_provider)
 
 
 def get_account_details(conn: sqlite3.Connection, account_number: str) -> Dict[str, Any]:
-    """Retrieves account record from the database."""
-    cursor = conn.execute(
-        """
-        SELECT account_number, account_holder, balance, is_locked, failed_attempts, created_at
-        FROM accounts
-        WHERE account_number = ?;
-        """,
-        (account_number,),
-    )
-    row = cursor.fetchone()
-    if row is None:
+    """Retrieves account record dictionary from the database."""
+    account_repo = SqliteAccountRepository(conn)
+    account = account_repo.get_by_number(account_number)
+    if account is None:
         raise AccountNotFoundException(f"Account '{account_number}' not found.")
-    return dict(row)
+    return {
+        "account_number": account.account_number,
+        "account_holder": account.account_holder,
+        "balance": account.balance,
+        "is_locked": 1 if account.is_locked else 0,
+        "failed_attempts": account.failed_attempts,
+        "created_at": account.created_at,
+    }
 
 
 def get_balance(conn: sqlite3.Connection, account_number: str) -> float:
-    """
-    Performs an inquiry of the current account balance and logs the inquiry.
-    """
-    exception_to_raise: Optional[Exception] = None
-    balance_val = 0.0
-
+    """Performs an inquiry of the current account balance and logs the inquiry."""
     with immediate_transaction(conn):
-        account = get_account_details(conn, account_number)
-        if account["is_locked"] == 1:
-            _log_transaction(
-                conn, account_number, "BALANCE_INQUIRY", 0.0, "REJECTED", "ACCOUNT_LOCKED"
-            )
-            exception_to_raise = AccountLockedException(f"Account '{account_number}' is locked.")
-        else:
-            balance_val = float(account["balance"])
-            _log_transaction(conn, account_number, "BALANCE_INQUIRY", balance_val, "SUCCESS", None)
-
-    if exception_to_raise is not None:
-        raise exception_to_raise
-
-    return balance_val
+        service = _get_transaction_service(conn)
+        return service.check_balance(account_number)
 
 
 def withdraw(
     conn: sqlite3.Connection, account_number: str, amount: float
 ) -> Dict[str, Any]:
-    """
-    Executes an atomic withdrawal.
-    Verifies balance, allocates physical cassette notes, updates account balance,
-    and logs the transaction.
-    """
-    if amount <= 0:
-        raise InvalidAmountException("Withdrawal amount must be greater than zero.")
-
-    exception_to_raise: Optional[Exception] = None
-    result: Optional[Dict[str, Any]] = None
-
+    """Executes an atomic withdrawal."""
     with immediate_transaction(conn):
-        account = get_account_details(conn, account_number)
-
-        if account["is_locked"] == 1:
-            _log_transaction(
-                conn, account_number, "WITHDRAWAL", amount, "REJECTED", "ACCOUNT_LOCKED"
-            )
-            exception_to_raise = AccountLockedException(f"Account '{account_number}' is locked.")
-        else:
-            current_balance = float(account["balance"])
-            if current_balance < amount:
-                _log_transaction(
-                    conn, account_number, "WITHDRAWAL", amount, "FAILED", "INSUFFICIENT_FUNDS"
-                )
-                exception_to_raise = InsufficientFundsException(
-                    f"Insufficient funds. Current balance: ${current_balance:.2f}, Requested: ${amount:.2f}."
-                )
-            else:
-                try:
-                    # Dispense notes from physical vault cassettes
-                    dispensed_notes = dispense_cash(conn, int(amount))
-
-                    # Deduct balance from account
-                    new_balance = round(current_balance - amount, 2)
-                    conn.execute(
-                        "UPDATE accounts SET balance = ? WHERE account_number = ?;",
-                        (new_balance, account_number),
-                    )
-
-                    # Record success transaction
-                    tx_id = _log_transaction(conn, account_number, "WITHDRAWAL", amount, "SUCCESS", None)
-
-                    result = {
-                        "transaction_id": tx_id,
-                        "account_number": account_number,
-                        "amount": amount,
-                        "dispensed_notes": dispensed_notes,
-                        "new_balance": new_balance,
-                    }
-                except AtmBaseException as e:
-                    _log_transaction(conn, account_number, "WITHDRAWAL", amount, "FAILED", e.failure_reason)
-                    exception_to_raise = e
-                except Exception as e:
-                    _log_transaction(conn, account_number, "WITHDRAWAL", amount, "FAILED", "DATABASE_ERROR")
-                    exception_to_raise = DatabaseTransactionError(f"Withdrawal failed: {str(e)}")
-
-    if exception_to_raise is not None:
-        raise exception_to_raise
-
-    return result or {}
+        service = _get_transaction_service(conn)
+        return service.withdraw_cash(account_number, amount)
 
 
 def deposit(
     conn: sqlite3.Connection, account_number: str, notes_or_amount: Any
 ) -> Dict[str, Any]:
-    """
-    Executes an atomic deposit. Accepts either:
-      - A dictionary mapping denominations to note counts (e.g., {500: 2, 200: 1})
-      - A numeric monetary amount in multiples of $100 (e.g., 1000.0 or 1500)
-    Increments vault cassette counts, credits account balance, and logs the transaction.
-    """
-    exception_to_raise: Optional[Exception] = None
-    result: Optional[Dict[str, Any]] = None
-
-    # Handle direct numerical amount input
-    if isinstance(notes_or_amount, (int, float)):
-        amount_val = float(notes_or_amount)
-        if amount_val <= 0:
-            raise InvalidAmountException("Deposit amount must be greater than zero.")
-        if amount_val % 100 != 0:
-            raise UnsupportedDenominationException("Deposit amount must be a multiple of $100.")
-        
-        rem = int(amount_val)
-        notes: Dict[int, int] = {}
-        for d in (500, 200, 100):
-            c = rem // d
-            notes[d] = c
-            rem %= d
-    elif isinstance(notes_or_amount, dict):
-        notes = notes_or_amount
-    else:
-        raise InvalidAmountException("Invalid deposit format. Must be an amount or note breakdown.")
-
+    """Executes an atomic deposit."""
     with immediate_transaction(conn):
-        account = get_account_details(conn, account_number)
-
-        if account["is_locked"] == 1:
-            _log_transaction(
-                conn, account_number, "DEPOSIT", 0.0, "REJECTED", "ACCOUNT_LOCKED"
-            )
-            exception_to_raise = AccountLockedException(f"Account '{account_number}' is locked.")
-        else:
-            try:
-                total_deposited = deposit_notes(conn, notes)
-                current_balance = float(account["balance"])
-                new_balance = round(current_balance + total_deposited, 2)
-
-                conn.execute(
-                    "UPDATE accounts SET balance = ? WHERE account_number = ?;",
-                    (new_balance, account_number),
-                )
-
-                tx_id = _log_transaction(
-                    conn, account_number, "DEPOSIT", float(total_deposited), "SUCCESS", None
-                )
-
-                result = {
-                    "transaction_id": tx_id,
-                    "account_number": account_number,
-                    "deposited_amount": total_deposited,
-                    "deposited_notes": notes,
-                    "new_balance": new_balance,
-                }
-            except AtmBaseException as e:
-                _log_transaction(conn, account_number, "DEPOSIT", 0.0, "FAILED", e.failure_reason)
-                exception_to_raise = e
-            except Exception as e:
-                _log_transaction(conn, account_number, "DEPOSIT", 0.0, "FAILED", "DATABASE_ERROR")
-                exception_to_raise = DatabaseTransactionError(f"Deposit failed: {str(e)}")
-
-    if exception_to_raise is not None:
-        raise exception_to_raise
-
-    return result or {}
+        service = _get_transaction_service(conn)
+        return service.deposit_cash(account_number, notes_or_amount)
 
 
 def get_transaction_history(
     conn: sqlite3.Connection, account_number: str, limit: int = 10
 ) -> List[Dict[str, Any]]:
     """Retrieves recent transaction audit history for an account."""
-    cursor = conn.execute(
-        """
-        SELECT transaction_id, account_number, transaction_type, amount, status, failure_reason, timestamp
-        FROM transactions
-        WHERE account_number = ?
-        ORDER BY timestamp DESC, transaction_id DESC
-        LIMIT ?;
-        """,
-        (account_number, limit),
-    )
-    return [dict(row) for row in cursor.fetchall()]
+    service = _get_transaction_service(conn)
+    records = service.get_statement(account_number, limit)
+    return [
+        {
+            "transaction_id": r.transaction_id,
+            "account_number": r.account_number,
+            "transaction_type": r.transaction_type,
+            "amount": r.amount,
+            "status": r.status,
+            "failure_reason": r.failure_reason,
+            "timestamp": r.timestamp,
+        }
+        for r in records
+    ]
 
 
 def change_pin(
     conn: sqlite3.Connection, account_number: str, old_pin: str, new_pin: str
 ) -> bool:
-    """
-    Validates current PIN and updates the account with a freshly salted hash for the new PIN.
-    """
-    if not (new_pin.isdigit() and len(new_pin) in (4, 6)):
-        raise InvalidAmountException("New PIN must be exactly 4 or 6 numeric digits.")
-
+    """Validates current PIN and updates the account with new salted hash."""
     with immediate_transaction(conn):
-        cursor = conn.execute(
-            "SELECT pin_hash, salt, is_locked FROM accounts WHERE account_number = ?;",
-            (account_number,),
-        )
-        row = cursor.fetchone()
-        if row is None:
-            raise AccountNotFoundException(f"Account '{account_number}' not found.")
-
-        if row["is_locked"] == 1:
-            raise AccountLockedException("Cannot change PIN for locked account.")
-
-        if not verify_pin(old_pin, row["salt"], row["pin_hash"]):
-            raise InvalidAmountException("Current PIN verification failed.")
-
-        new_salt = generate_salt()
-        new_hash = hash_pin(new_pin, new_salt)
-
-        conn.execute(
-            "UPDATE accounts SET pin_hash = ?, salt = ? WHERE account_number = ?;",
-            (new_hash, new_salt, account_number),
-        )
-        return True
+        service = _get_transaction_service(conn)
+        return service.change_security_pin(account_number, old_pin, new_pin)

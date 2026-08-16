@@ -347,6 +347,57 @@ def view_audit_logs() -> None:
             conn.close()
 
 
+def handle_crypto_hash_inspector() -> None:
+    """
+    Live Demonstration & Security Inspector for PBKDF2-HMAC-SHA256 with Pepper & Salt.
+    Allows administrators and students to demonstrate modern cryptographic key derivation.
+    """
+    from core.services.security import Pbkdf2PepperHashProvider
+
+    provider = Pbkdf2PepperHashProvider()
+
+    print(Style.CYAN + Style.BOLD + r"""
+  ╔═══════════════════════════════════════════════════════════════════════╗
+  ║       🔐 LIVE CRYPTOGRAPHIC HASH & SECURITY INSPECTOR (ACADEMIC)      ║
+  ║         PBKDF2-HMAC-SHA256 (100,000 Rounds) + Per-User Salt + Pepper  ║
+  ╚═══════════════════════════════════════════════════════════════════════╝
+    """ + Style.RESET)
+
+    test_input = input("  Enter any sample PIN / Password to inspect: ").strip()
+    if not test_input:
+        test_input = "1234"
+        print(f"  [Default Sample PIN chosen: {test_input}]")
+
+    # Generate salt and compute hash
+    salt = provider.generate_salt()
+    pepper_secret = provider.default_pepper
+    v3_hash = provider.hash_pin(test_input, salt)
+
+    print(f"\n  ╔════════════════════════════════════════════════════════════════════════════════════════════════════╗")
+    print(f"  ║                                 CRYPTOGRAPHIC DERIVATION BREAKDOWN                                 ║")
+    print(f"  ╠══════════════════════════════════╦═════════════════════════════════════════════════════════════════╣")
+    print(f"  ║ Plaintext Input (Never Stored)   ║ {test_input:<63} ║")
+    print(f"  ║ Cryptographic Random Salt        ║ {salt:<63} ║")
+    print(f"  ║ Server-Side Pepper Secret (HMAC) ║ {pepper_secret[:40] + '...':<63} ║")
+    print(f"  ║ PBKDF2 Iteration Work Factor     ║ 100,000 Rounds (HMAC-SHA256)                                    ║")
+    print(f"  ║ Output Format Identifier         ║ Version 3 (Prefix: 'v3$')                                       ║")
+    print(f"  ╠══════════════════════════════════╩═════════════════════════════════════════════════════════════════╣")
+    print(f"  ║ Final One-Way Hash Stored in Database:                                                             ║")
+    print(f"  ║   {Style.GREEN}{v3_hash}{Style.RESET}                               ║")
+    print(f"  ╚════════════════════════════════════════════════════════════════════════════════════════════════════╝")
+
+    print(Style.YELLOW + "\n  [!] Testing Constant-Time Verification against Attacks:" + Style.RESET)
+    verify_test = input(f"  Enter PIN to test verification (try '{test_input}' or a wrong PIN): ").strip()
+    is_match = provider.verify_pin(verify_test, salt, v3_hash)
+
+    if is_match:
+        print(Style.GREEN + f"  [+] Verification Result: TRUE (PIN Matches - Constant-time check passed)" + Style.RESET)
+    else:
+        print(Style.RED + f"  [-] Verification Result: FALSE (PIN Does Not Match - Access Denied)" + Style.RESET)
+
+    input("\n  Press Enter to return to Manager Menu...")
+
+
 def reset_database_safely() -> None:
     """
     Safely handles database reset with a conscious 2-step verification
@@ -385,12 +436,13 @@ def admin_main() -> None:
         print(f"  [3] Inspect Physical Vault Cassette Inventory")
         print(f"  [4] Refill / Set Vault Cassette Note Counts")
         print(f"  [5] Unlock a Locked Customer Account")
-        print(f"  [6] Inspect Global Transaction & Security Audit Logs")
-        print(f"  [7] Reset Database to Factory Seed State (Protected)")
-        print(f"  [8] Exit Admin Portal")
+        print(f"  [6] Cryptographic Hash & PIN Security Inspector (Live Demo)")
+        print(f"  [7] Inspect Global Transaction & Security Audit Logs")
+        print(f"  [8] Reset Database to Factory Seed State (Protected)")
+        print(f"  [9] Exit Admin Portal")
         print("  " + "-" * 55)
 
-        choice = input("  Select an administrative action [1-8]: ").strip()
+        choice = input("  Select an administrative action [1-9]: ").strip()
 
         if choice == "1":
             view_all_accounts()
@@ -403,14 +455,16 @@ def admin_main() -> None:
         elif choice == "5":
             handle_unlock_account()
         elif choice == "6":
-            view_audit_logs()
+            handle_crypto_hash_inspector()
         elif choice == "7":
-            reset_database_safely()
+            view_audit_logs()
         elif choice == "8":
+            reset_database_safely()
+        elif choice == "9":
             print(Style.CYAN + "\n  [+] Exiting Admin Portal. Have a great day!\n" + Style.RESET)
             break
         else:
-            print(Style.RED + "  [-] Invalid selection. Please enter a number between 1 and 8." + Style.RESET)
+            print(Style.RED + "  [-] Invalid selection. Please enter a number between 1 and 9." + Style.RESET)
 
 
 if __name__ == "__main__":
@@ -419,4 +473,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n\n  [!] Admin session cancelled by user. Exiting safely.")
         sys.exit(0)
+
 
