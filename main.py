@@ -7,7 +7,7 @@ All bank-wide account inquiries, balances, and diagnostics are strictly restrict
 
 import os
 import sys
-from typing import Dict
+from typing import Any, Dict
 
 # Ensure project root is in sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -35,8 +35,8 @@ from database.connection import get_db_connection
 from database.seeder import seed_data
 
 
-# ANSI Color Codes for Terminal Styling
-class TerminalColor:
+# ANSI Color Codes for Tasteful Focal Highlights
+class Style:
     CYAN = "\033[96m"
     GREEN = "\033[92m"
     YELLOW = "\033[93m"
@@ -47,20 +47,17 @@ class TerminalColor:
 
 def print_banner() -> None:
     """Displays the Customer ATM Header."""
-    print(TerminalColor.CYAN + TerminalColor.BOLD + r"""
+    print(Style.CYAN + Style.BOLD + r"""
   ╔═══════════════════════════════════════════════════════════════════════╗
   ║                     24/7 SECURE ATM BANKING KIOSK                     ║
   ║                   Transaction-Safe Multi-Denomination                ║
   ╚═══════════════════════════════════════════════════════════════════════╝
-    """ + TerminalColor.RESET)
+    """ + Style.RESET)
 
 
 def prompt_pin(prompt_text: str = "Enter 4-Digit Security PIN: ") -> str:
-    """
-    Prompts for PIN reliably across all terminal environments without freezing.
-    """
-    pin = input(f"  {prompt_text}").strip()
-    return pin
+    """Prompts for PIN reliably across all terminal environments."""
+    return input(f"  {prompt_text}").strip()
 
 
 class CustomerAtmSession:
@@ -76,15 +73,16 @@ class CustomerAtmSession:
     def run_menu(self) -> None:
         """Customer transaction loop."""
         while True:
-            print(TerminalColor.BOLD + f"\n  Cardholder: {self.account_holder} | Account: {self.account_number}" + TerminalColor.RESET)
-            print("  " + "=" * 48)
-            print("  [1] Balance Inquiry")
-            print("  [2] Cash Withdrawal (Fast Cash / Custom Amount)")
-            print("  [3] Cash Deposit (Insert Physical Notes)")
-            print("  [4] Mini-Statement (Your Recent Transactions)")
-            print("  [5] Change Security PIN")
-            print("  [6] Logout & Eject Card")
-            print("  " + "=" * 48)
+            print(f"\n  ┌───────────────────────────────────────────────────────────┐")
+            print(f"  │ Cardholder: {self.account_holder:<24} Acc: {self.account_number:<15} │")
+            print(f"  ├───────────────────────────────────────────────────────────┤")
+            print(f"  │  [1] Balance Inquiry                                      │")
+            print(f"  │  [2] Cash Withdrawal (Fast Cash / Custom Amount)          │")
+            print(f"  │  [3] Cash Deposit (Fast Deposit / Custom Amount)          │")
+            print(f"  │  [4] Mini-Statement (Your Recent Transactions)            │")
+            print(f"  │  [5] Change Security PIN                                  │")
+            print(f"  │  [6] Logout & Eject Card                                  │")
+            print(f"  └───────────────────────────────────────────────────────────┘")
 
             choice = input("  Select an option [1-6]: ").strip()
 
@@ -99,110 +97,130 @@ class CustomerAtmSession:
             elif choice == "5":
                 self.handle_change_pin()
             elif choice == "6":
-                print(TerminalColor.GREEN + f"\n  [+] Card ejected. Thank you for banking with us, {self.account_holder}!\n" + TerminalColor.RESET)
+                print(Style.GREEN + f"\n  [+] Card ejected. Thank you for banking with us, {self.account_holder}!\n" + Style.RESET)
                 break
             else:
-                print(TerminalColor.RED + "  [-] Invalid selection. Please choose 1 to 6." + TerminalColor.RESET)
+                print(Style.RED + "  [-] Invalid selection. Please choose 1 to 6." + Style.RESET)
 
     def handle_balance_inquiry(self) -> None:
-        """Queries and presents the cardholder's own account balance."""
+        """Queries and presents the cardholder's own account balance in a clean table."""
         conn = get_db_connection()
         try:
             balance = get_balance(conn, self.account_number)
-            print(TerminalColor.GREEN + f"\n  >>> Available Account Balance: ${balance:,.2f}" + TerminalColor.RESET)
+            print(f"\n  ╔═══════════════════════════════════════════════════════════╗")
+            print(f"  ║                    ACCOUNT BALANCE SUMMARY                ║")
+            print(f"  ╠═══════════════════════════════════════════════════════════╣")
+            print(f"  ║  Account Number : {self.account_number:<39} ║")
+            print(f"  ║  Account Holder : {self.account_holder:<39} ║")
+            print(f"  ║  Available Funds: {Style.GREEN}${balance:,.2f}{Style.RESET}".ljust(70) + "║")
+            print(f"  ╚═══════════════════════════════════════════════════════════╝")
         except AtmBaseException as e:
-            print(TerminalColor.RED + f"\n  [-] Inquiry failed: {e.message}" + TerminalColor.RESET)
+            print(Style.RED + f"\n  [-] Balance inquiry failed: {e.message}" + Style.RESET)
         finally:
             conn.close()
 
     def handle_withdrawal(self) -> None:
         """Handles fast cash and custom cash withdrawal for the active cardholder."""
-        print("\n  [ CASH WITHDRAWAL ]")
-        print("  Fast Cash: [1] $100  [2] $200  [3] $500  [4] $1,000  [5] $2,000")
-        print("  Custom:    [6] Enter other amount")
-        print("  Cancel:    [7] Return to menu")
+        print("\n  ┌───────────────────────────────────────────────────────────┐")
+        print("  │                     CASH WITHDRAWAL                       │")
+        print("  ├───────────────────────────────────────────────────────────┤")
+        print("  │  Fast Cash: [1] $100   [2] $200   [3] $500   [4] $1,000   │")
+        print("  │  Custom:    [5] Enter Other Amount (Multiples of $100)    │")
+        print("  │  Cancel:    [6] Return to Main Menu                       │")
+        print("  └───────────────────────────────────────────────────────────┘")
 
-        fast_cash_map = {"1": 100, "2": 200, "3": 500, "4": 1000, "5": 2000}
-        sub_choice = input("  Select withdrawal option [1-7]: ").strip()
+        fast_cash_map = {"1": 100, "2": 200, "3": 500, "4": 1000}
+        sub_choice = input("  Select withdrawal option [1-6]: ").strip()
 
         if sub_choice in fast_cash_map:
             amount = float(fast_cash_map[sub_choice])
-        elif sub_choice == "6":
+        elif sub_choice == "5":
             raw_amt = input("  Enter withdrawal amount (multiples of $100): $").strip()
             try:
                 amount = float(raw_amt)
             except ValueError:
-                print(TerminalColor.RED + "  [-] Invalid amount. Please enter a numeric amount." + TerminalColor.RESET)
+                print(Style.RED + "  [-] Invalid amount. Please enter a valid numeric amount." + Style.RESET)
                 return
-        elif sub_choice == "7":
+        elif sub_choice == "6":
             return
         else:
-            print(TerminalColor.RED + "  [-] Invalid selection." + TerminalColor.RESET)
+            print(Style.RED + "  [-] Invalid selection." + Style.RESET)
             return
 
         conn = get_db_connection()
         try:
             result = withdraw(conn, self.account_number, amount)
-            print(TerminalColor.GREEN + "\n  ╔══════════════════════════════════════════════════════════════╗")
-            print(f"  ║ WITHDRAWAL SUCCESSFUL: ${result['amount']:,.2f}".ljust(64) + "║")
-            print("  ╠══════════════════════════════════════════════════════════════╣")
-            print("  ║ Notes Dispensed:".ljust(64) + "║")
+            print(f"\n  ╔═══════════════════════════════════════════════════════════╗")
+            print(f"  ║              {Style.GREEN}WITHDRAWAL TRANSACTION RECEIPT{Style.RESET}               ║")
+            print(f"  ╠═══════════════════════════════════════════════════════════╣")
+            print(f"  ║  Transaction ID : #{result['transaction_id']:<38} ║")
+            print(f"  ║  Amount Dispensed: {Style.GREEN}${result['amount']:,.2f}{Style.RESET}".ljust(70) + "║")
+            print(f"  ╠───────────────────────────────────────────────────────────╣")
+            print(f"  ║  Notes Dispensed Breakdown:                               ║")
             for denom, count in sorted(result["dispensed_notes"].items(), reverse=True):
-                print(f"  ║   • ${denom} x {count} note(s) = ${denom * count:,d}".ljust(64) + "║")
-            print("  ╠══════════════════════════════════════════════════════════════╣")
-            print(f"  ║ New Account Balance: ${result['new_balance']:,.2f}".ljust(64) + "║")
-            print("  ╚══════════════════════════════════════════════════════════════╝" + TerminalColor.RESET)
+                line = f"  ║    • ${denom:<3} note(s) x {count:<3} = ${denom * count:,.2f}"
+                print(line.ljust(62) + "║")
+            print(f"  ╠───────────────────────────────────────────────────────────╣")
+            print(f"  ║  Remaining Balance: {Style.CYAN}${result['new_balance']:,.2f}{Style.RESET}".ljust(70) + "║")
+            print(f"  ╚═══════════════════════════════════════════════════════════╝")
         except (InsufficientFundsException, AtmCashExhaustedException, UnsupportedDenominationException, InvalidAmountException, AccountLockedException) as e:
-            print(TerminalColor.RED + f"\n  [-] Withdrawal Rejected: {e.message}" + TerminalColor.RESET)
+            print(Style.RED + f"\n  [-] Withdrawal Rejected: {e.message}" + Style.RESET)
         except Exception as e:
-            print(TerminalColor.RED + f"\n  [-] System error during withdrawal: {str(e)}" + TerminalColor.RESET)
+            print(Style.RED + f"\n  [-] System error during withdrawal: {str(e)}" + Style.RESET)
         finally:
             conn.close()
 
     def handle_deposit(self) -> None:
-        """Handles physical note cash deposit for the active cardholder."""
-        print("\n  [ CASH DEPOSIT - NOTE INSERTION ]")
-        print("  Please insert accepted physical notes ($500, $200, $100):")
-        notes: Dict[int, int] = {}
+        """Handles simplified cash deposit for the active cardholder."""
+        print("\n  ┌───────────────────────────────────────────────────────────┐")
+        print("  │                       CASH DEPOSIT                        │")
+        print("  ├───────────────────────────────────────────────────────────┤")
+        print("  │  Quick Deposit:  [1] $500    [2] $1,000   [3] $2,000      │")
+        print("  │  Custom Amount:  [4] Enter Custom Amount                  │")
+        print("  │  Cancel:         [5] Return to Main Menu                  │")
+        print("  └───────────────────────────────────────────────────────────┘")
 
-        for denom in sorted(config.SUPPORTED_DENOMINATIONS, reverse=True):
-            raw = input(f"  Number of ${denom} notes to insert (default 0): ").strip()
-            if not raw:
-                notes[denom] = 0
-            else:
-                try:
-                    count = int(raw)
-                    if count < 0:
-                        print(TerminalColor.RED + "  [-] Count cannot be negative." + TerminalColor.RESET)
-                        return
-                    notes[denom] = count
-                except ValueError:
-                    print(TerminalColor.RED + "  [-] Invalid integer note count." + TerminalColor.RESET)
-                    return
+        quick_deposit_map = {"1": 500.0, "2": 1000.0, "3": 2000.0}
+        choice = input("  Select deposit option [1-5]: ").strip()
 
-        total_declared = sum(d * c for d, c in notes.items())
-        if total_declared == 0:
-            print(TerminalColor.YELLOW + "  [*] No notes inserted. Deposit cancelled." + TerminalColor.RESET)
+        if choice in quick_deposit_map:
+            amount = quick_deposit_map[choice]
+        elif choice == "4":
+            raw = input("  Enter cash deposit amount (multiples of $100): $").strip()
+            try:
+                amount = float(raw)
+            except ValueError:
+                print(Style.RED + "  [-] Invalid amount. Please enter a valid number." + Style.RESET)
+                return
+        elif choice == "5":
+            return
+        else:
+            print(Style.RED + "  [-] Invalid selection." + Style.RESET)
             return
 
-        print(f"  Total amount to deposit: ${total_declared:,.2f}")
-        confirm = input("  Confirm deposit? [y/N]: ").strip().lower()
+        if amount <= 0 or amount % 100 != 0:
+            print(Style.RED + "  [-] Deposit amount must be a positive multiple of $100." + Style.RESET)
+            return
+
+        confirm = input(f"  Deposit ${amount:,.2f} into your account? [y/N]: ").strip().lower()
         if confirm != "y":
-            print(TerminalColor.YELLOW + "  [*] Deposit cancelled." + TerminalColor.RESET)
+            print(Style.YELLOW + "  [*] Deposit cancelled." + Style.RESET)
             return
 
         conn = get_db_connection()
         try:
-            result = deposit(conn, self.account_number, notes)
-            print(TerminalColor.GREEN + "\n  ╔══════════════════════════════════════════════════════════════╗")
-            print(f"  ║ DEPOSIT SUCCESSFUL: ${result['deposited_amount']:,.2f}".ljust(64) + "║")
-            print("  ╠══════════════════════════════════════════════════════════════╣")
-            print(f"  ║ New Account Balance: ${result['new_balance']:,.2f}".ljust(64) + "║")
-            print("  ╚══════════════════════════════════════════════════════════════╝" + TerminalColor.RESET)
+            result = deposit(conn, self.account_number, amount)
+            print(f"\n  ╔═══════════════════════════════════════════════════════════╗")
+            print(f"  ║               {Style.GREEN}DEPOSIT TRANSACTION RECEIPT{Style.RESET}                 ║")
+            print(f"  ╠═══════════════════════════════════════════════════════════╣")
+            print(f"  ║  Transaction ID : #{result['transaction_id']:<38} ║")
+            print(f"  ║  Amount Deposited: {Style.GREEN}${result['deposited_amount']:,.2f}{Style.RESET}".ljust(70) + "║")
+            print(f"  ║  Updated Balance : {Style.CYAN}${result['new_balance']:,.2f}{Style.RESET}".ljust(70) + "║")
+            print(f"  ╚═══════════════════════════════════════════════════════════╝")
         except AtmBaseException as e:
-            print(TerminalColor.RED + f"\n  [-] Deposit Failed: {e.message}" + TerminalColor.RESET)
+            print(Style.RED + f"\n  [-] Deposit Failed: {e.message}" + Style.RESET)
         except Exception as e:
-            print(TerminalColor.RED + f"\n  [-] System error during deposit: {str(e)}" + TerminalColor.RESET)
+            print(Style.RED + f"\n  [-] System error during deposit: {str(e)}" + Style.RESET)
         finally:
             conn.close()
 
@@ -211,36 +229,44 @@ class CustomerAtmSession:
         conn = get_db_connection()
         try:
             history = get_transaction_history(conn, self.account_number, limit=10)
-            print(TerminalColor.CYAN + f"\n  [ MINI-STATEMENT: LAST {len(history)} TRANSACTIONS ]" + TerminalColor.RESET)
-            print("  " + "-" * 75)
-            print(f"  {'ID':<5} | {'Type':<16} | {'Amount':<10} | {'Status':<9} | {'Timestamp':<19}")
-            print("  " + "-" * 75)
-            for tx in history:
-                amt_str = f"${tx['amount']:,.2f}" if tx["amount"] > 0 else "-"
-                status_color = TerminalColor.GREEN if tx["status"] == "SUCCESS" else TerminalColor.RED
-                status_str = f"{status_color}{tx['status']:<9}{TerminalColor.RESET}"
-                print(f"  {tx['transaction_id']:<5} | {tx['transaction_type']:<16} | {amt_str:<10} | {status_str} | {tx['timestamp']}")
-            print("  " + "-" * 75)
+            print(f"\n  ╔═════════════════════════════════════════════════════════════════════════╗")
+            print(f"  ║                     MINI-STATEMENT (RECENT ACTIVITY)                    ║")
+            print(f"  ╠═══════╦══════════════════╦══════════════╦═════════════╦═════════════════════╣")
+            print(f"  ║ Tx ID ║ Transaction Type ║ Amount ($)   ║ Status      ║ Timestamp           ║")
+            print(f"  ╠═══════╬══════════════════╬══════════════╬═════════════╬═════════════════════╣")
+
+            if not history:
+                print(f"  ║                  No transaction history recorded yet.                  ║")
+            else:
+                for tx in history:
+                    amt_str = f"${tx['amount']:,.2f}" if tx["amount"] > 0 else "-"
+                    status_col = Style.GREEN if tx["status"] == "SUCCESS" else Style.RED
+                    status_txt = f"{status_col}{tx['status']:<7}{Style.RESET}"
+                    print(f"  ║ #{tx['transaction_id']:<5} ║ {tx['transaction_type']:<16} ║ {amt_str:<12} ║ {status_txt} ║ {tx['timestamp']:<19} ║")
+
+            print(f"  ╚═══════╩══════════════════╩══════════════╩═════════════╩═════════════════════╝")
         finally:
             conn.close()
 
     def handle_change_pin(self) -> None:
         """Handles PIN modification for the active cardholder."""
-        print("\n  [ CHANGE SECURITY PIN ]")
+        print("\n  ┌───────────────────────────────────────────────────────────┐")
+        print("  │                   CHANGE SECURITY PIN                     │")
+        print("  └───────────────────────────────────────────────────────────┘")
         old_pin = prompt_pin("Enter Current PIN: ")
         new_pin = prompt_pin("Enter New 4 or 6-Digit PIN: ")
         confirm_pin = prompt_pin("Confirm New PIN: ")
 
         if new_pin != confirm_pin:
-            print(TerminalColor.RED + "  [-] New PIN and confirmation do not match." + TerminalColor.RESET)
+            print(Style.RED + "  [-] New PIN and confirmation do not match." + Style.RESET)
             return
 
         conn = get_db_connection()
         try:
             change_pin(conn, self.account_number, old_pin, new_pin)
-            print(TerminalColor.GREEN + "  [+] PIN updated successfully!" + TerminalColor.RESET)
+            print(Style.GREEN + "\n  [+] Security PIN updated successfully!" + Style.RESET)
         except AtmBaseException as e:
-            print(TerminalColor.RED + f"  [-] PIN update failed: {e.message}" + TerminalColor.RESET)
+            print(Style.RED + f"\n  [-] PIN update failed: {e.message}" + Style.RESET)
         finally:
             conn.close()
 
@@ -265,7 +291,7 @@ def customer_main() -> None:
         if main_choice == "1":
             acc_num = input("\n  Insert Card (Enter Account Number, e.g., 10001): ").strip()
             if not acc_num:
-                print(TerminalColor.RED + "  [-] Account number cannot be blank." + TerminalColor.RESET)
+                print(Style.RED + "  [-] Account number cannot be blank." + Style.RESET)
                 continue
 
             pin = prompt_pin("Enter 4-Digit Security PIN: ")
@@ -273,26 +299,26 @@ def customer_main() -> None:
             conn = get_db_connection()
             try:
                 account_data = authenticate_user(conn, acc_num, pin)
-                print(TerminalColor.GREEN + f"\n  [+] Authentication Successful! Welcome, {account_data['account_holder']}." + TerminalColor.RESET)
+                print(Style.GREEN + f"\n  [+] Authentication Successful! Welcome, {account_data['account_holder']}." + Style.RESET)
                 session = CustomerAtmSession(account_data["account_number"], account_data["account_holder"])
                 session.run_menu()
             except AuthenticationFailedException as e:
-                print(TerminalColor.RED + f"\n  [-] Authentication Failed: {e.message}" + TerminalColor.RESET)
+                print(Style.RED + f"\n  [-] Authentication Failed: {e.message}" + Style.RESET)
             except AccountLockedException as e:
-                print(TerminalColor.RED + f"\n  [!] SECURITY ALERT: {e.message}" + TerminalColor.RESET)
+                print(Style.RED + f"\n  [!] SECURITY ALERT: {e.message}" + Style.RESET)
             except AccountNotFoundException as e:
-                print(TerminalColor.RED + f"\n  [-] Account Error: {e.message}" + TerminalColor.RESET)
+                print(Style.RED + f"\n  [-] Account Error: {e.message}" + Style.RESET)
             except Exception as e:
-                print(TerminalColor.RED + f"\n  [-] Unexpected error: {str(e)}" + TerminalColor.RESET)
+                print(Style.RED + f"\n  [-] Unexpected error: {str(e)}" + Style.RESET)
             finally:
                 conn.close()
 
         elif main_choice == "2":
-            print(TerminalColor.CYAN + "\n  [+] Thank you for using our ATM service. Goodbye!\n" + TerminalColor.RESET)
+            print(Style.CYAN + "\n  [+] Thank you for using our ATM service. Goodbye!\n" + Style.RESET)
             break
 
         else:
-            print(TerminalColor.RED + "  [-] Invalid option selected. Please choose 1 or 2." + TerminalColor.RESET)
+            print(Style.RED + "  [-] Invalid option selected. Please choose 1 or 2." + Style.RESET)
 
 
 if __name__ == "__main__":
