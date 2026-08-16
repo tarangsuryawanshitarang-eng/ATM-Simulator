@@ -1,13 +1,13 @@
 """
-Main Application Entry Point for the Advanced ATM Simulator.
-Provides an interactive, menu-driven CLI terminal interface with input sanitization,
-secure credential handling, physical cassette visibility, and session state management.
+Customer ATM Terminal Entry Point for the Advanced ATM Simulator.
+Provides an authentic, menu-driven customer banking experience for cardholders.
+Administrative and Bank Manager capabilities are handled separately in admin.py.
 """
 
 import getpass
 import os
 import sys
-from typing import Dict, Optional
+from typing import Dict
 
 # Ensure project root is in sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -27,46 +27,36 @@ from core.security import authenticate_user
 from core.transaction import (
     change_pin,
     deposit,
-    get_account_details,
     get_balance,
     get_transaction_history,
     withdraw,
 )
-from core.vault import get_total_vault_cash, get_vault_inventory, replenish_vault
 from database.connection import get_db_connection
 from database.seeder import seed_data
 
 
 # ANSI Color Codes for Terminal Styling
 class TerminalColor:
-    HEADER = "\033[95m"
-    BLUE = "\033[94m"
     CYAN = "\033[96m"
     GREEN = "\033[92m"
     YELLOW = "\033[93m"
     RED = "\033[91m"
     BOLD = "\033[1m"
-    UNDERLINE = "\033[4m"
     RESET = "\033[0m"
 
 
-def clear_screen() -> None:
-    """Clears the console screen."""
-    os.system("cls" if os.name == "nt" else "clear")
-
-
 def print_banner() -> None:
-    """Displays the ASCII header banner."""
+    """Displays the Customer ATM Header."""
     print(TerminalColor.CYAN + TerminalColor.BOLD + r"""
   ╔═══════════════════════════════════════════════════════════════════════╗
-  ║                 ADVANCED TRANSACTION-SAFE ATM SIMULATOR              ║
-  ║                   SQLite3 ACID Backend & Vault Cassettes              ║
+  ║                     24/7 SECURE ATM BANKING KIOSK                     ║
+  ║                   Transaction-Safe Multi-Denomination                ║
   ╚═══════════════════════════════════════════════════════════════════════╝
     """ + TerminalColor.RESET)
 
 
 def print_demo_credentials() -> None:
-    """Displays test accounts for convenience."""
+    """Displays test accounts for demonstration purposes."""
     print(TerminalColor.YELLOW + "\n  [ DEMO ACCOUNTS & PIN CHEAT SHEET ]" + TerminalColor.RESET)
     print("  " + "-" * 55)
     print("  Account: 10001 | PIN: 1234 | Alice Smith   | Bal: $2,500.00")
@@ -76,56 +66,36 @@ def print_demo_credentials() -> None:
     print("  " + "-" * 55)
 
 
-def show_vault_status() -> None:
-    """Displays physical cassette note inventory."""
-    conn = get_db_connection()
-    try:
-        inventory = get_vault_inventory(conn)
-        total_cash = get_total_vault_cash(conn)
-        print(TerminalColor.BLUE + "\n  [ PHYSICAL VAULT CASSETTE INVENTORY ]" + TerminalColor.RESET)
-        print("  " + "=" * 45)
-        for denom in sorted(config.SUPPORTED_DENOMINATIONS, reverse=True):
-            count = inventory.get(denom, 0)
-            subtotal = denom * count
-            print(f"  Cassette ${denom:3d} : {count:4d} notes | Subtotal: ${subtotal:7,d}")
-        print("  " + "-" * 45)
-        print(f"  Total Vault Cash : ${total_cash:10,d}")
-        print("  " + "=" * 45)
-    finally:
-        conn.close()
-
-
 def prompt_pin(prompt_text: str = "Enter PIN: ") -> str:
     """Prompts for PIN securely using getpass or standard input fallback."""
     try:
         pin = getpass.getpass(prompt_text)
         if not pin:
-            # Fallback if getpass is empty in non-interactive environment
             pin = input(prompt_text)
         return pin.strip()
     except Exception:
         return input(prompt_text).strip()
 
 
-class AtmSession:
-    """Manages active customer session state and transaction workflows."""
+class CustomerAtmSession:
+    """Manages active customer session state and banking transactions."""
 
     def __init__(self, account_number: str, account_holder: str):
         self.account_number = account_number
         self.account_holder = account_holder
 
     def run_menu(self) -> None:
-        """Customer main menu loop."""
+        """Customer transaction loop."""
         while True:
-            print(TerminalColor.BOLD + f"\n  Logged in as: {self.account_holder} (Acc: {self.account_number})" + TerminalColor.RESET)
-            print("  " + "=" * 45)
+            print(TerminalColor.BOLD + f"\n  Welcome, {self.account_holder} | Account: {self.account_number}" + TerminalColor.RESET)
+            print("  " + "=" * 48)
             print("  [1] Balance Inquiry")
-            print("  [2] Cash Withdrawal (Standard / Fast Cash)")
-            print("  [3] Cash Deposit (By Note Breakdown)")
+            print("  [2] Cash Withdrawal (Fast Cash / Custom Amount)")
+            print("  [3] Cash Deposit (Insert Physical Notes)")
             print("  [4] Mini-Statement (Recent Transactions)")
-            print("  [5] Change PIN")
+            print("  [5] Change Security PIN")
             print("  [6] Logout & Eject Card")
-            print("  " + "=" * 45)
+            print("  " + "=" * 48)
 
             choice = input("  Select an option [1-6]: ").strip()
 
@@ -140,19 +110,19 @@ class AtmSession:
             elif choice == "5":
                 self.handle_change_pin()
             elif choice == "6":
-                print(TerminalColor.GREEN + f"\n  [+] Session ended. Thank you for banking with us, {self.account_holder}!\n" + TerminalColor.RESET)
+                print(TerminalColor.GREEN + f"\n  [+] Card ejected. Thank you for banking with us, {self.account_holder}!\n" + TerminalColor.RESET)
                 break
             else:
-                print(TerminalColor.RED + "  [-] Invalid selection. Please enter a number from 1 to 6." + TerminalColor.RESET)
+                print(TerminalColor.RED + "  [-] Invalid selection. Please choose 1 to 6." + TerminalColor.RESET)
 
     def handle_balance_inquiry(self) -> None:
         """Queries and presents account balance."""
         conn = get_db_connection()
         try:
             balance = get_balance(conn, self.account_number)
-            print(TerminalColor.GREEN + f"\n  >>> Available Balance: ${balance:,.2f}" + TerminalColor.RESET)
+            print(TerminalColor.GREEN + f"\n  >>> Available Account Balance: ${balance:,.2f}" + TerminalColor.RESET)
         except AtmBaseException as e:
-            print(TerminalColor.RED + f"\n  [-] Balance inquiry failed: {e.message}" + TerminalColor.RESET)
+            print(TerminalColor.RED + f"\n  [-] Inquiry failed: {e.message}" + TerminalColor.RESET)
         finally:
             conn.close()
 
@@ -173,12 +143,12 @@ class AtmSession:
             try:
                 amount = float(raw_amt)
             except ValueError:
-                print(TerminalColor.RED + "  [-] Invalid amount entered. Must be a numeric value." + TerminalColor.RESET)
+                print(TerminalColor.RED + "  [-] Invalid amount. Please enter a numeric amount." + TerminalColor.RESET)
                 return
         elif sub_choice == "7":
             return
         else:
-            print(TerminalColor.RED + "  [-] Invalid choice." + TerminalColor.RESET)
+            print(TerminalColor.RED + "  [-] Invalid selection." + TerminalColor.RESET)
             return
 
         conn = get_db_connection()
@@ -203,7 +173,7 @@ class AtmSession:
     def handle_deposit(self) -> None:
         """Handles physical note cash deposit."""
         print("\n  [ CASH DEPOSIT - NOTE INSERTION ]")
-        print("  Please insert physical notes ($500, $200, $100):")
+        print("  Please insert accepted physical notes ($500, $200, $100):")
         notes: Dict[int, int] = {}
 
         for denom in sorted(config.SUPPORTED_DENOMINATIONS, reverse=True):
@@ -218,7 +188,7 @@ class AtmSession:
                         return
                     notes[denom] = count
                 except ValueError:
-                    print(TerminalColor.RED + "  [-] Invalid integer count." + TerminalColor.RESET)
+                    print(TerminalColor.RED + "  [-] Invalid integer note count." + TerminalColor.RESET)
                     return
 
         total_declared = sum(d * c for d, c in notes.items())
@@ -267,7 +237,7 @@ class AtmSession:
 
     def handle_change_pin(self) -> None:
         """Handles PIN modification."""
-        print("\n  [ CHANGE PIN ]")
+        print("\n  [ CHANGE SECURITY PIN ]")
         old_pin = prompt_pin("  Enter Current PIN: ")
         new_pin = prompt_pin("  Enter New 4 or 6-digit PIN: ")
         confirm_pin = prompt_pin("  Confirm New PIN: ")
@@ -279,76 +249,15 @@ class AtmSession:
         conn = get_db_connection()
         try:
             change_pin(conn, self.account_number, old_pin, new_pin)
-            print(TerminalColor.GREEN + "  [+] PIN changed successfully!" + TerminalColor.RESET)
+            print(TerminalColor.GREEN + "  [+] PIN updated successfully!" + TerminalColor.RESET)
         except AtmBaseException as e:
-            print(TerminalColor.RED + f"  [-] PIN change failed: {e.message}" + TerminalColor.RESET)
+            print(TerminalColor.RED + f"  [-] PIN update failed: {e.message}" + TerminalColor.RESET)
         finally:
             conn.close()
 
 
-def admin_menu() -> None:
-    """Maintenance and diagnostic admin menu."""
-    while True:
-        print(TerminalColor.BOLD + "\n  [ SYSTEM ADMINISTRATION & MAINTENANCE ]" + TerminalColor.RESET)
-        print("  " + "=" * 45)
-        print("  [1] Inspect Vault Cassette Inventory")
-        print("  [2] Refill / Set Vault Cassettes")
-        print("  [3] View Complete System Audit Ledger")
-        print("  [4] Reset Database to Factory Seed State")
-        print("  [5] Return to Main Terminal")
-        print("  " + "=" * 45)
-
-        adm_choice = input("  Select Admin Option [1-5]: ").strip()
-
-        if adm_choice == "1":
-            show_vault_status()
-        elif adm_choice == "2":
-            print("\n  [ REFILL VAULT CASSETTES ]")
-            refills: Dict[int, int] = {}
-            for denom in sorted(config.SUPPORTED_DENOMINATIONS, reverse=True):
-                raw = input(f"  Set note count for ${denom} cassette: ").strip()
-                if raw:
-                    try:
-                        refills[denom] = int(raw)
-                    except ValueError:
-                        print(TerminalColor.RED + "  [-] Invalid number." + TerminalColor.RESET)
-            if refills:
-                conn = get_db_connection()
-                try:
-                    replenish_vault(conn, refills)
-                    print(TerminalColor.GREEN + "  [+] Vault inventory updated successfully!" + TerminalColor.RESET)
-                finally:
-                    conn.close()
-        elif adm_choice == "3":
-            conn = get_db_connection()
-            try:
-                cursor = conn.execute(
-                    "SELECT transaction_id, account_number, transaction_type, amount, status, failure_reason, timestamp FROM transactions ORDER BY transaction_id DESC LIMIT 20;"
-                )
-                rows = cursor.fetchall()
-                print(TerminalColor.CYAN + "\n  [ GLOBAL AUDIT LOG (LAST 20 EVENTS) ]" + TerminalColor.RESET)
-                print("  " + "-" * 85)
-                print(f"  {'ID':<5} | {'Acc #':<7} | {'Type':<16} | {'Amount':<10} | {'Status':<8} | {'Reason':<15} | {'Timestamp'}")
-                print("  " + "-" * 85)
-                for r in rows:
-                    amt_str = f"${r['amount']:,.2f}" if r["amount"] > 0 else "-"
-                    reason = r["failure_reason"] or "-"
-                    print(f"  {r['transaction_id']:<5} | {r['account_number']:<7} | {r['transaction_type']:<16} | {amt_str:<10} | {r['status']:<8} | {reason:<15} | {r['timestamp']}")
-                print("  " + "-" * 85)
-            finally:
-                conn.close()
-        elif adm_choice == "4":
-            confirm = input("  Are you sure you want to RESET the entire database? [y/N]: ").strip().lower()
-            if confirm == "y":
-                seed_data(reset=True)
-                print(TerminalColor.GREEN + "  [+] Database reset and seeded successfully!" + TerminalColor.RESET)
-        elif adm_choice == "5":
-            break
-
-
-def main() -> None:
-    """Primary application execution loop."""
-    # Ensure database is seeded on startup if not present
+def customer_main() -> None:
+    """Primary Customer ATM execution loop."""
     if not config.DB_PATH.exists():
         seed_data(reset=False)
 
@@ -360,12 +269,10 @@ def main() -> None:
         print("  ╚═══════════════════════════════════════════════════════╝")
         print("  [1] Insert ATM Card (Login with Account Number & PIN)")
         print("  [2] View Demo Accounts & Test PINs")
-        print("  [3] Check ATM Physical Cash Status")
-        print("  [4] System Administrator / Maintenance Tools")
-        print("  [5] Exit Simulator")
+        print("  [3] Exit ATM")
         print("  " + "-" * 55)
 
-        main_choice = input("  Please select an option [1-5]: ").strip()
+        main_choice = input("  Please select an option [1-3]: ").strip()
 
         if main_choice == "1":
             acc_num = input("\n  Insert Card (Enter Account Number, e.g., 10001): ").strip()
@@ -379,7 +286,7 @@ def main() -> None:
             try:
                 account_data = authenticate_user(conn, acc_num, pin)
                 print(TerminalColor.GREEN + f"\n  [+] Authentication Successful! Welcome, {account_data['account_holder']}." + TerminalColor.RESET)
-                session = AtmSession(account_data["account_number"], account_data["account_holder"])
+                session = CustomerAtmSession(account_data["account_number"], account_data["account_holder"])
                 session.run_menu()
             except AuthenticationFailedException as e:
                 print(TerminalColor.RED + f"\n  [-] Authentication Failed: {e.message}" + TerminalColor.RESET)
@@ -396,22 +303,16 @@ def main() -> None:
             print_demo_credentials()
 
         elif main_choice == "3":
-            show_vault_status()
-
-        elif main_choice == "4":
-            admin_menu()
-
-        elif main_choice == "5":
-            print(TerminalColor.CYAN + "\n  [+] Shutting down ATM Simulator. Goodbye!\n" + TerminalColor.RESET)
+            print(TerminalColor.CYAN + "\n  [+] Thank you for using our ATM service. Goodbye!\n" + TerminalColor.RESET)
             break
 
         else:
-            print(TerminalColor.RED + "  [-] Invalid option selected. Please choose 1 - 5." + TerminalColor.RESET)
+            print(TerminalColor.RED + "  [-] Invalid option selected. Please choose 1, 2, or 3." + TerminalColor.RESET)
 
 
 if __name__ == "__main__":
     try:
-        main()
+        customer_main()
     except KeyboardInterrupt:
-        print("\n\n  [!] Operation cancelled by user. Exiting safely.")
+        print("\n\n  [!] ATM transaction cancelled by customer. Exiting safely.")
         sys.exit(0)

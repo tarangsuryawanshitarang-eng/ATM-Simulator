@@ -166,3 +166,36 @@ def authenticate_user(
         raise exception_to_raise
 
     return account
+
+
+def unlock_account(conn: sqlite3.Connection, account_number: str) -> bool:
+    """
+    Administrative function to unlock a locked customer account and reset failed attempts.
+    Logs an audit event in the transactions table.
+    """
+    with immediate_transaction(conn):
+        cursor = conn.execute(
+            "SELECT account_number, account_holder, is_locked FROM accounts WHERE account_number = ?;",
+            (account_number,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            raise AccountNotFoundException(f"Account '{account_number}' not found.")
+
+        conn.execute(
+            """
+            UPDATE accounts 
+            SET is_locked = 0, failed_attempts = 0 
+            WHERE account_number = ?;
+            """,
+            (account_number,),
+        )
+        conn.execute(
+            """
+            INSERT INTO transactions (account_number, transaction_type, amount, status, failure_reason)
+            VALUES (?, 'AUTHENTICATE', 0.0, 'SUCCESS', 'ADMIN_UNLOCKED');
+            """,
+            (account_number,),
+        )
+        return True
+

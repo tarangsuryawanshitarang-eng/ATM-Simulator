@@ -247,10 +247,18 @@ python database/seeder.py --reset
 
 ### Running the Application
 
-Launch the interactive CLI:
-```bash
-python main.py
-```
+- **Customer ATM Kiosk (Default)**:
+  ```bash
+  python main.py
+  ```
+  Launches the real-world cardholder interface (Login, Balance, Withdraw, Deposit, Statement, Change PIN).
+
+- **Bank Manager / Admin Control Panel**:
+  ```bash
+  python admin.py
+  ```
+  Launches the dedicated Bank Manager dashboard to inspect customer accounts and balances in SQL tables (without exposing customer PINs), manage vault cassettes, unlock accounts, and view global audit logs.
+
 
 ---
 
@@ -292,7 +300,8 @@ atm-simulator/
 ├── .gitignore              # Ignores .venv, cache, and db files
 ├── README.md               # Architecture, manuals & technical documentation
 ├── requirements.txt        # Minimal test dependencies (pytest)
-├── main.py                 # Interactive CLI terminal interface
+├── main.py                 # Customer ATM terminal interface (Default)
+├── admin.py                # Bank Manager / Administrator dashboard
 ├── config.py               # Centralized configuration & constants
 ├── database/
 │   ├── __init__.py
