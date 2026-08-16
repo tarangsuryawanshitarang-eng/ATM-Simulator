@@ -6,8 +6,8 @@
 ## 📌 Architectural Branch Chronology
 
 ```
-[Initial Release] ──► [feature/admin-panel] ──► [feature/security-v3-pepper] ──► [feature/system-design-adaptation]
-  (Baseline Core)       (Kiosk vs Admin Portal)     (Cryptographic Pepper v3)       (SOLID / OOP / 100 Indian Users)
+[Initial Release] ──► [feature/admin-panel] ──► [feature/security-v3-pepper] ──► [feature/system-design-adaptation] ──► [feature/ui-enhancement]
+  (Baseline Core)       (Kiosk vs Admin Portal)     (Cryptographic Pepper v3)       (SOLID / OOP / 100 Indian Users)       (Next-Gen TrueColor TUI)
 ```
 
 ---
@@ -91,5 +91,36 @@
   - Replaced foreign demo accounts with 100 realistic Indian customer names (Aarav Sharma, Vivaan Patel, Diya Iyer, Aditya Verma, Tarang Suryawanshi, Sameep Patel, Ananya Gupta, Rahul Deshmukh, etc.) across account numbers `10001` to `10100`.
 - **Live Cryptographic Hash & Security Inspector (`admin.py`)**:
   - Added academic interactive demonstration tool for professors to inspect live salt generation, server pepper HMAC pre-hashing, 100,000 PBKDF2 iterations, and constant-time verification tests.
-- **Expanded Test Suite (30 Tests Passing)**:
-  - Added unit tests in `tests/test_account_creation.py` and `tests/test_domain_services.py` verifying account deletion and service life cycles.
+
+---
+
+## 🎨 Branch 5: Next-Generation TrueColor TUI Enhancement (`feature/ui-enhancement`)
+*Transformed traditional plain CLI text into a visually stunning, institutional-grade 24-bit TrueColor Terminal User Interface.*
+
+- **Dedicated TUI Component & Styling Engine (`core/ui/`)**:
+  - `core/ui/theme.py`:
+    - 24-bit RGB TrueColor palettes (Cyber Cyan, Emerald Mint, Sunset Orange, Ruby Crimson, Slate Surface).
+    - Linear RGB gradient generator for banners, headings, and visual accents.
+    - Unicode box drawing sets and high-visibility status badges (`[ ● ACTIVE ]`, `[ 🔒 LOCKED ]`, `[ ⚡ SUCCESS ]`, `[ ✖ REJECTED ]`).
+  - `core/ui/effects.py`:
+    - Realistic EMV Chip & PIN card reader animation with decryption stages.
+    - Physical cash dispenser note counting animation (`500x1, 200x1... 💵 Cash Slot Open`).
+    - Vault cash intake optical inspection animation for deposits.
+  - `core/ui/components.py`:
+    - Real-time bullet-masked PIN input (`●●●●`) supporting Windows (`msvcrt`) and POSIX (`termios`) with backspace handling.
+    - Authentic thermal paper ATM receipts with perforated cut lines, metadata, and barcodes.
+    - Rounded data tables with automatic alignment and gradient title headers.
+    - High-level metric dashboard cards.
+- **Customer ATM Kiosk Visual Overhaul (`main.py`)**:
+  - Cyber ASCII logo banner with gradient rendering and live terminal status indicators (`#ATM-IND-MUM-042`, `TLS 1.3 Active`).
+  - Authenticated cardholder dashboard card with real-time balance pills.
+  - Styled transaction menus with color-coded action buttons.
+  - Printable thermal transaction receipts for balance inquiry, withdrawals, and deposits.
+- **Bank Manager Executive Portal Overhaul (`admin.py`)**:
+  - Gold-to-orange gradient executive banner.
+  - Real-time executive metrics summary strip (Total Accounts, System Liquidity Pool, Vault Cash, Locked Accounts).
+  - Searchable customer directory with name/account number filtering.
+  - Visual cassette capacity gauge bars (`[████████░░] 80%`).
+  - Formatted audit trail table with category pill badges.
+- **100% Automated Test Suite Compatibility**:
+  - All 30 unit tests pass seamlessly with non-blocking TUI fallbacks for automated test pipelines.
