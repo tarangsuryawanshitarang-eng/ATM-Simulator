@@ -1,10 +1,16 @@
 """
-Security and Cryptography module for the Advanced ATM Simulator.
-Implements PBKDF2-HMAC-SHA256 hashing, unique salts, constant-time comparison,
-and account lockout threshold enforcement.
+Security and Cryptography module for the Advanced ATM Simulator (Version 3).
+Implements Version 3 Cryptographic Hash Architecture:
+  - PBKDF2-HMAC-SHA256 (100,000 rounds)
+  - Cryptographically secure 16-byte unique salts
+  - Server-side Secret Pepper pre-processing via HMAC-SHA256
+  - Constant-time comparison to prevent timing attacks
+  - Account lockout threshold enforcement (>= 3 attempts)
+  - Transparent auto-migration from legacy hashes to Version 3
 """
 
 import hashlib
+import hmac
 import secrets
 import sqlite3
 from typing import Any, Dict, Optional
@@ -23,32 +29,65 @@ def generate_salt() -> str:
     return secrets.token_hex(config.SALT_BYTE_LENGTH)
 
 
-def hash_pin(pin: str, salt: str) -> str:
+def hash_pin_v3(pin: str, salt: str, pepper: Optional[str] = None) -> str:
     """
-    Hashes a PIN string with the provided salt using PBKDF2-HMAC-SHA256.
-    Returns the hexadecimal digest.
+    Version 3 Hash Function:
+    Combines PIN + Server-Side Secret Pepper (via HMAC-SHA256),
+    followed by PBKDF2-HMAC-SHA256 (100,000 iterations) with a unique 16-byte salt.
+    Returns version-tagged string: 'v3$<hex_digest>'.
     """
     if not isinstance(pin, str) or not pin:
         raise ValueError("PIN must be a non-empty string.")
     if not isinstance(salt, str) or not salt:
         raise ValueError("Salt must be a non-empty string.")
 
+    pepper_key = (pepper or config.SECURITY_PEPPER_V3).encode("utf-8")
+    
+    # Step 1: Pre-process PIN with secret pepper via HMAC-SHA256
+    peppered_digest = hmac.new(
+        key=pepper_key,
+        msg=pin.encode("utf-8"),
+        digestmod=hashlib.sha256
+    ).digest()
+
+    # Step 2: PBKDF2-HMAC-SHA256 key derivation with unique salt
     derived_key = hashlib.pbkdf2_hmac(
         hash_name=config.PBKDF2_HASH_NAME,
-        password=pin.encode("utf-8"),
+        password=peppered_digest,
         salt=salt.encode("utf-8"),
         iterations=config.PBKDF2_ITERATIONS,
     )
-    return derived_key.hex()
+    return f"v3${derived_key.hex()}"
 
 
-def verify_pin(pin: str, salt: str, expected_hash: str) -> bool:
+def hash_pin(pin: str, salt: str, pepper: Optional[str] = None) -> str:
+    """Default hashing interface. Uses Version 3 cryptographic formulation."""
+    return hash_pin_v3(pin, salt, pepper)
+
+
+def verify_pin(
+    pin: str, salt: str, expected_hash: str, pepper: Optional[str] = None
+) -> bool:
     """
-    Verifies if the provided PIN matches expected_hash under the given salt.
+    Verifies if the provided PIN matches expected_hash under the given salt and pepper.
+    Supports both Version 3 (v3$) peppered hashes and legacy PBKDF2 hashes.
     Uses constant-time comparison to prevent timing attacks.
     """
-    actual_hash = hash_pin(pin, salt)
-    return secrets.compare_digest(actual_hash, expected_hash)
+    if not isinstance(expected_hash, str) or not expected_hash:
+        return False
+
+    if expected_hash.startswith("v3$"):
+        actual_hash = hash_pin_v3(pin, salt, pepper)
+        return secrets.compare_digest(actual_hash, expected_hash)
+    else:
+        # Legacy v1/v2 hash verification (unpeppered PBKDF2)
+        derived_legacy = hashlib.pbkdf2_hmac(
+            hash_name=config.PBKDF2_HASH_NAME,
+            password=pin.encode("utf-8"),
+            salt=salt.encode("utf-8"),
+            iterations=config.PBKDF2_ITERATIONS,
+        ).hex()
+        return secrets.compare_digest(derived_legacy, expected_hash)
 
 
 def authenticate_user(
@@ -57,8 +96,7 @@ def authenticate_user(
     """
     Authenticates a user against the database.
     Manages failed attempt counters, triggers immediate lockout at threshold,
-    and logs authentication audit trails atomically.
-    Ensures state updates (failed attempts / lockouts) commit prior to raising exceptions.
+    logs authentication audit trails atomically, and auto-upgrades legacy hashes to v3.
     """
     account = None
     exception_to_raise: Optional[Exception] = None
@@ -97,10 +135,19 @@ def authenticate_user(
                     f"Account '{account_number}' is locked due to excessive failed attempts. Please contact support."
                 )
             else:
-                # Verify PIN
+                # Verify PIN (supports v3 and legacy)
                 is_valid = verify_pin(pin, account["salt"], account["pin_hash"])
 
                 if is_valid:
+                    # Auto-upgrade legacy hashes to Version 3 upon successful login
+                    if not account["pin_hash"].startswith("v3$"):
+                        new_v3_hash = hash_pin_v3(pin, account["salt"])
+                        conn.execute(
+                            "UPDATE accounts SET pin_hash = ? WHERE account_number = ?;",
+                            (new_v3_hash, account_number),
+                        )
+                        account["pin_hash"] = new_v3_hash
+
                     # Reset failed attempts if previously incremented
                     if account["failed_attempts"] > 0:
                         conn.execute(
@@ -198,4 +245,3 @@ def unlock_account(conn: sqlite3.Connection, account_number: str) -> bool:
             (account_number,),
         )
         return True
-

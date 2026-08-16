@@ -135,16 +135,27 @@ Withdrawal Request ($Amount)
 
 ---
 
-## 🔒 Security & Authentication Model
+## 🔒 Security & Authentication Model (Version 3)
 
-1. **PIN Derivation**:
-   $$\text{pin\_hash} = \text{PBKDF2-HMAC-SHA256}(\text{PIN}, \text{salt}, \text{iterations}=100000)$$
-2. **Salt Generation**: Cryptographically secure 16-byte random hex string (`secrets.token_hex(16)`), ensuring each user has a unique salt.
-3. **Constant-Time Verification**: Prevents side-channel timing attacks by using `secrets.compare_digest()`.
-4. **Lockout Policy**: Tracks `failed_attempts`. Upon 3 consecutive failures:
-   - Account is locked (`is_locked = 1`).
-   - A `LOCKOUT` audit transaction is committed.
-   - All further attempts (even with the correct PIN) are rejected until unlocked by an administrator.
+The system utilizes an advanced **Version 3 Salt + Pepper Cryptographic Hashing Engine**:
+
+$$\text{HMAC-Digest} = \text{HMAC-SHA256}(\text{Key}=\text{Server-Side Secret Pepper}, \text{Msg}=\text{PIN})$$
+
+$$\text{v3\_hash} = \text{"v3\$"} + \text{PBKDF2-HMAC-SHA256}(\text{Password}=\text{HMAC-Digest}, \text{Salt}=\text{Random 16-Byte Salt}, \text{Iterations}=100,000)$$
+
+1. **Server-Side Secret Pepper**:
+   - A high-entropy secret key stored strictly in application configuration / environment variables (`ATM_SECURITY_PEPPER`), **never in the database**.
+   - Even if the SQLite database is completely exfiltrated, an adversary cannot crack hashed PINs without compromising the isolated application server.
+2. **Cryptographically Random Salts**:
+   - Every account generates a unique 16-byte random hexadecimal salt (`secrets.token_hex(16)`), defeating rainbow table precomputations.
+3. **Constant-Time Verification**:
+   - Uses `secrets.compare_digest()` to eliminate side-channel timing attack vectors.
+4. **Brute-Force Lockout Defense**:
+   - Tracks consecutive invalid attempts. On the 3rd failed attempt, the account is permanently locked (`is_locked = 1`) and a `LOCKOUT` audit transaction is committed.
+   - Requires administrative intervention (`python admin.py`) to unlock.
+5. **Seamless Hash Auto-Migration**:
+   - Backward-compatible verification engine automatically upgrades legacy hashes to Version 3 upon successful cardholder authentication.
+
 
 ---
 
