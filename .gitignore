@@ -1,0 +1,28 @@
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# SQLite Database & Storage (Sensitive / Ephemeral Runtime Data)
+*.db
+*.sqlite
+*.sqlite3
+!database/schema.sql
+
+# Environment & Secret Variables
+.env
+.env.*
+*.secret
+
+# IDE & OS Artifacts
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
