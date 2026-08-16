@@ -183,3 +183,14 @@ class AuthenticationService(IAuthenticationService):
             )
         )
         return new_account
+
+    def delete_customer_account(self, account_number: str) -> bool:
+        """
+        Closes and permanently deletes a customer account and cleans up associated records.
+        """
+        account = self.account_repo.get_by_number(account_number)
+        if account is None:
+            raise AccountNotFoundException(f"Account '{account_number}' not found.")
+
+        return self.account_repo.delete(account_number)
+

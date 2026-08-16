@@ -48,3 +48,8 @@ class IAuthenticationService(ABC):
     ) -> Account:
         """Registers a new customer account with auto-generated account number."""
         pass
+
+    @abstractmethod
+    def delete_customer_account(self, account_number: str) -> bool:
+        """Closes and deletes a customer account."""
+        pass

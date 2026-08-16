@@ -91,6 +91,24 @@ class SqliteAccountRepository(IAccountRepository):
             ),
         )
 
+    def delete(self, account_number: str) -> bool:
+        acc_num = str(account_number).strip()
+        existing = self.get_by_number(acc_num)
+        if existing is None:
+            raise AccountNotFoundException(f"Account '{acc_num}' not found to delete.")
+
+        # Clean up related transaction history records
+        self.conn.execute(
+            "DELETE FROM transactions WHERE account_number = ?;",
+            (acc_num,),
+        )
+        # Delete the account entity record
+        cursor = self.conn.execute(
+            "DELETE FROM accounts WHERE account_number = ?;",
+            (acc_num,),
+        )
+        return cursor.rowcount > 0
+
     def get_all(self) -> List[Account]:
         cursor = self.conn.execute(
             """

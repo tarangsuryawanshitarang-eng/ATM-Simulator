@@ -30,6 +30,11 @@ class IAccountRepository(ABC):
         pass
 
     @abstractmethod
+    def delete(self, account_number: str) -> bool:
+        """Deletes an account from persistent storage."""
+        pass
+
+    @abstractmethod
     def get_all(self) -> List[Account]:
         """Retrieves all accounts for administrative reporting."""
         pass

@@ -18,7 +18,7 @@ from core.exceptions import (
     AtmBaseException,
     InvalidAmountException,
 )
-from core.security import create_account, unlock_account
+from core.security import create_account, delete_account, unlock_account
 from core.transaction import deposit
 from core.vault import get_total_vault_cash, get_vault_inventory, replenish_vault
 from database.connection import get_db_connection
@@ -212,6 +212,59 @@ def handle_create_account() -> None:
         print(Style.RED + f"\n  [-] Account Creation Failed: {e.message}" + Style.RESET)
     except Exception as e:
         print(Style.RED + f"\n  [-] Unexpected error: {str(e)}" + Style.RESET)
+    finally:
+        conn.close()
+
+
+def handle_delete_account() -> None:
+    """Allows an administrator to close and delete a customer account."""
+    print("\n  ┌───────────────────────────────────────────────────────────┐")
+    print("  │               CLOSE / DELETE CUSTOMER ACCOUNT             │")
+    print("  └───────────────────────────────────────────────────────────┘")
+
+    acc_num = input("  Enter Account Number to DELETE (or press Enter to cancel): ").strip()
+    if not acc_num:
+        print(Style.YELLOW + "  [*] Account deletion cancelled." + Style.RESET)
+        return
+
+    conn = get_db_connection()
+    try:
+        cursor = conn.execute(
+            "SELECT account_number, account_holder, balance, is_locked FROM accounts WHERE account_number = ?;",
+            (acc_num,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            print(Style.RED + f"\n  [-] Error: Account '{acc_num}' not found in database." + Style.RESET)
+            return
+
+        status_str = "LOCKED" if row["is_locked"] else "ACTIVE"
+        print(f"\n  Account Details:")
+        print(f"    • Account Number : {row['account_number']}")
+        print(f"    • Account Holder : {row['account_holder']}")
+        print(f"    • Current Balance: ${row['balance']:,.2f}")
+        print(f"    • Status         : {status_str}")
+
+        confirm = input(
+            Style.RED
+            + f"\n  Are you sure you want to permanently DELETE account '{acc_num}' ({row['account_holder']})? [y/N]: "
+            + Style.RESET
+        ).strip().lower()
+
+        if confirm != "y":
+            print(Style.YELLOW + "  [*] Account deletion aborted by administrator." + Style.RESET)
+            return
+
+        delete_account(conn, acc_num)
+        print(
+            Style.GREEN
+            + f"\n  [+] SUCCESS: Customer account '{acc_num}' ({row['account_holder']}) has been permanently DELETED from the database."
+            + Style.RESET
+        )
+    except AccountNotFoundException as e:
+        print(Style.RED + f"\n  [-] Error: {e.message}" + Style.RESET)
+    except Exception as e:
+        print(Style.RED + f"\n  [-] Unexpected error during account deletion: {str(e)}" + Style.RESET)
     finally:
         conn.close()
 
@@ -433,38 +486,42 @@ def admin_main() -> None:
         print(f"  ╚═══════════════════════════════════════════════════════╝")
         print(f"  [1] View All Customer Accounts & Total Balances (SQL)")
         print(f"  [2] Open / Register New Customer Account")
-        print(f"  [3] Inspect Physical Vault Cassette Inventory")
-        print(f"  [4] Refill / Set Vault Cassette Note Counts")
-        print(f"  [5] Unlock a Locked Customer Account")
-        print(f"  [6] Cryptographic Hash & PIN Security Inspector (Live Demo)")
-        print(f"  [7] Inspect Global Transaction & Security Audit Logs")
-        print(f"  [8] Reset Database to Factory Seed State (Protected)")
-        print(f"  [9] Exit Admin Portal")
+        print(f"  [3] Close / Delete a Customer Account")
+        print(f"  [4] Inspect Physical Vault Cassette Inventory")
+        print(f"  [5] Refill / Set Vault Cassette Note Counts")
+        print(f"  [6] Unlock a Locked Customer Account")
+        print(f"  [7] Cryptographic Hash & PIN Security Inspector (Live Demo)")
+        print(f"  [8] Inspect Global Transaction & Security Audit Logs")
+        print(f"  [9] Reset Database to Factory Seed State (Protected)")
+        print(f"  [10] Exit Admin Portal")
         print("  " + "-" * 55)
 
-        choice = input("  Select an administrative action [1-9]: ").strip()
+        choice = input("  Select an administrative action [1-10]: ").strip()
 
         if choice == "1":
             view_all_accounts()
         elif choice == "2":
             handle_create_account()
         elif choice == "3":
-            view_vault_cassettes()
+            handle_delete_account()
         elif choice == "4":
-            refill_vault_cassettes()
+            view_vault_cassettes()
         elif choice == "5":
-            handle_unlock_account()
+            refill_vault_cassettes()
         elif choice == "6":
-            handle_crypto_hash_inspector()
+            handle_unlock_account()
         elif choice == "7":
-            view_audit_logs()
+            handle_crypto_hash_inspector()
         elif choice == "8":
-            reset_database_safely()
+            view_audit_logs()
         elif choice == "9":
+            reset_database_safely()
+        elif choice == "10":
             print(Style.CYAN + "\n  [+] Exiting Admin Portal. Have a great day!\n" + Style.RESET)
             break
         else:
-            print(Style.RED + "  [-] Invalid selection. Please enter a number between 1 and 9." + Style.RESET)
+            print(Style.RED + "  [-] Invalid selection. Please enter a number between 1 and 10." + Style.RESET)
+
 
 
 if __name__ == "__main__":

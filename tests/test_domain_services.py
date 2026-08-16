@@ -151,6 +151,19 @@ class TestDomainEntitiesAndServices(unittest.TestCase):
         stmt = self.tx_service.get_statement("10001", limit=5)
         self.assertTrue(len(stmt) >= 3)
 
+    def test_delete_customer_account_domain_service(self) -> None:
+        """Verifies account deletion via AuthenticationService and SqliteAccountRepository."""
+        acc = self.auth_service.create_customer_account(
+            account_holder="Temporary User",
+            pin="1234",
+            initial_balance=500.0,
+        )
+        self.assertIsNotNone(self.account_repo.get_by_number(acc.account_number))
+
+        del_res = self.auth_service.delete_customer_account(acc.account_number)
+        self.assertTrue(del_res)
+        self.assertIsNone(self.account_repo.get_by_number(acc.account_number))
+
 
 if __name__ == "__main__":
     unittest.main()

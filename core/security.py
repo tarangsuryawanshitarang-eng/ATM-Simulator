@@ -155,3 +155,13 @@ def create_account(
                 "is_locked": 0,
                 "failed_attempts": 0,
             }
+
+
+def delete_account(conn: sqlite3.Connection, account_number: str) -> bool:
+    """Closes and deletes a customer account and all associated transactions."""
+    with immediate_transaction(conn):
+        account_repo = SqliteAccountRepository(conn)
+        tx_repo = SqliteTransactionRepository(conn)
+        auth_service = AuthenticationService(account_repo, tx_repo, _default_hash_provider)
+        return auth_service.delete_customer_account(account_number)
+

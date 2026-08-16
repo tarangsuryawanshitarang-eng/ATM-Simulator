@@ -7,7 +7,7 @@
 
 ```
 [Initial Release] ──► [feature/admin-panel] ──► [feature/security-v3-pepper] ──► [feature/system-design-adaptation]
-  (Baseline Core)       (Kiosk vs Admin Portal)     (Cryptographic Pepper v3)       (SOLID / OOP / DDD Clean Arch)
+  (Baseline Core)       (Kiosk vs Admin Portal)     (Cryptographic Pepper v3)       (SOLID / OOP / 100 Indian Users)
 ```
 
 ---
@@ -25,7 +25,7 @@
 - **Relational Schema**:
   - Created tables for `accounts`, `transactions`, and `cash_vault`.
 - **Idempotent Database Seeder**:
-  - Seeded demo test accounts (`10001`, `10002`, `10003`, `10004`) and vault cassettes.
+  - Seeded initial demo accounts and vault cassettes.
 
 ---
 
@@ -65,8 +65,8 @@
 
 ---
 
-## 🏗️ Branch 4: System Design & SOLID Adaptation (`feature/system-design-adaptation`)
-*Refactored procedural modules into institutional Object-Oriented Clean Architecture (HLD/LLD).*
+## 🏗️ Branch 4: System Design, SOLID Adaptation & Indian Profiles (`feature/system-design-adaptation`)
+*Refactored procedural modules into institutional Object-Oriented Clean Architecture (HLD/LLD), added Account Deletion, and seeded 100 Indian customer accounts.*
 
 - **Comprehensive System Design Report (`analysis_of_atm_simulation.md`)**:
   - Complete architectural assessment covering SOLID principles, High-Level Design (HLD), Low-Level Design (LLD), and threat modeling.
@@ -76,18 +76,20 @@
   - `VaultCassette`: Domain entity for cassette note arithmetic and denomination validation.
 - **Interface Layer (`core/interfaces/`)**:
   - Defined pure Abstract Base Classes (ABCs):
-    - `IAccountRepository`, `ITransactionRepository`, `IVaultRepository` (DIP & ISP).
-    - `IHashProvider`, `IAuthenticationService`, `ITransactionService`, `IVaultManagerService`.
+    - `IAccountRepository` (with `create`, `delete`, `get_by_number`, `get_all`), `ITransactionRepository`, `IVaultRepository` (DIP & ISP).
+    - `IHashProvider`, `IAuthenticationService` (with `delete_customer_account`), `ITransactionService`, `IVaultManagerService`.
 - **Repository Layer (`core/repositories/`)**:
-  - `SqliteAccountRepository`, `SqliteTransactionRepository`, `SqliteVaultRepository` mapping SQL records to domain models.
+  - `SqliteAccountRepository` (with referential integrity handling for account deletion), `SqliteTransactionRepository`, `SqliteVaultRepository` mapping SQL records to domain models.
 - **Domain Services Layer (`core/services/`)**:
   - `Pbkdf2PepperHashProvider`: Strategy pattern implementation for PBKDF2 + Pepper cryptography.
-  - `AuthenticationService`: Business domain service for login, lockout, and registration.
+  - `AuthenticationService`: Business domain service for login, lockout, registration, and account closure/deletion.
   - `VaultManagerService`: Encapsulated greedy backtracking cash dispenser.
   - `BankingTransactionService`: Coordinated balance inquiries, withdrawals, deposits, and statements.
-- **Backward-Compatible Facades (`core/security.py`, `core/vault.py`, `core/transaction.py`)**:
-  - Maintained 100% backward compatibility for all legacy entry points and test scripts.
+- **Administrative Account Deletion (`admin.py`)**:
+  - Added option **`[3] Close / Delete a Customer Account`** with interactive confirmation and details preview.
+- **100 Authentic Indian Customer Profiles (`database/seeder.py`)**:
+  - Replaced foreign demo accounts with 100 realistic Indian customer names (Aarav Sharma, Vivaan Patel, Diya Iyer, Aditya Verma, Tarang Suryawanshi, Sameep Patel, Ananya Gupta, Rahul Deshmukh, etc.) across account numbers `10001` to `10100`.
 - **Live Cryptographic Hash & Security Inspector (`admin.py`)**:
   - Added academic interactive demonstration tool for professors to inspect live salt generation, server pepper HMAC pre-hashing, 100,000 PBKDF2 iterations, and constant-time verification tests.
-- **Test Suite Expansion (`tests/test_domain_services.py`)**:
-  - Added 5 new unit tests verifying domain entity encapsulation, services, and repositories (27 passing tests in total).
+- **Expanded Test Suite (30 Tests Passing)**:
+  - Added unit tests in `tests/test_account_creation.py` and `tests/test_domain_services.py` verifying account deletion and service life cycles.

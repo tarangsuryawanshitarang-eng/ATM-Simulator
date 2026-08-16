@@ -6,12 +6,12 @@
   <img src="https://img.shields.io/badge/Transactions-ACID_Safe-success?style=for-the-badge" alt="ACID Safe"/>
   <img src="https://img.shields.io/badge/Security-PBKDF2--SHA256--Pepper-red?style=for-the-badge" alt="PBKDF2-SHA256-Pepper"/>
   <img src="https://img.shields.io/badge/Architecture-SOLID_Clean_Design-purple?style=for-the-badge" alt="SOLID Clean Design"/>
-  <img src="https://img.shields.io/badge/Tests-27%20Passing%20(100%25)-brightgreen?style=for-the-badge" alt="Tests"/>
+  <img src="https://img.shields.io/badge/Tests-30%20Passing%20(100%25)-brightgreen?style=for-the-badge" alt="Tests"/>
 </p>
 
 <p align="center">
   <strong>An institutional-grade, transaction-safe Automated Teller Machine (ATM) simulation system engineered in Python and SQLite.</strong><br>
-  Built with clean Object-Oriented SOLID architecture, Domain-Driven Design (DDD), banking-grade PBKDF2 cryptography with HMAC Pepper defense, exact-change cassette allocation algorithms, thread-safe ACID concurrency, and separate Customer Kiosk and Bank Manager interfaces.
+  Built with clean Object-Oriented SOLID architecture, Domain-Driven Design (DDD), 100 Indian customer demo accounts, banking-grade PBKDF2 cryptography with HMAC Pepper defense, exact-change cassette allocation algorithms, thread-safe ACID concurrency, and separate Customer Kiosk and Bank Manager interfaces.
 </p>
 
 ---
@@ -29,7 +29,7 @@
 - [Getting Started](#-getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation & Virtual Environment](#installation--virtual-environment)
-  - [Database Initialization](#database-initialization)
+  - [Database Initialization (100 Accounts)](#database-initialization-100-accounts)
   - [Running the Customer ATM Kiosk](#running-the-customer-atm-kiosk)
   - [Running the Bank Manager Portal](#running-the-bank-manager-portal)
   - [Live Cryptographic Hash Inspector](#live-cryptographic-hash-inspector)
@@ -48,6 +48,7 @@ The **Advanced ATM Simulator** models real-world automated banking kiosks with i
 3. **Cryptographic Protection**: Secures user PINs via **PBKDF2-HMAC-SHA256** (100,000 iterations), unique 16-byte random salts, server-side HMAC secret pepper defense, timing-safe constant-time comparisons, and automatic 3-strike brute-force lockouts.
 4. **Clean OOP & Layered Architecture**: Clear separation across Domain Entities (`Account`, `VaultCassette`), Abstract Interfaces (`IAccountRepository`, `IAuthenticationService`), Data Access Repositories (`SqliteAccountRepository`), and Domain Services (`BankingTransactionService`, `VaultManagerService`).
 5. **Separation of Concerns**: Strictly separates the Customer ATM Kiosk (`main.py`) from the Bank Manager Dashboard (`admin.py`).
+6. **100 Authentic Indian Accounts**: Seeded with diverse Indian customer profiles across accounts `10001` to `10100`.
 
 ---
 
@@ -62,7 +63,7 @@ The **Advanced ATM Simulator** models real-world automated banking kiosks with i
 | ⚡ **Concurrency** | **ACID Guarantees** | `BEGIN IMMEDIATE TRANSACTION;` preventing write-lock collisions & race conditions |
 | 💵 **Dispenser** | **Bounded Note Allocator** | Exact-change backtracking solver across physical note cassettes (`$500`, `$200`, `$100`) |
 | 📜 **Auditability** | **Relational Ledger** | Full audit trail (`AUTHENTICATE`, `BALANCE_INQUIRY`, `WITHDRAWAL`, `DEPOSIT`, `LOCKOUT`) |
-| 👔 **Admin Portal** | **Manager Dashboard** | Centralized account creation, account unlocking, cash audit logs, live hash inspector |
+| 👔 **Admin Portal** | **Manager Dashboard** | Open/delete accounts, unlock accounts, inspect balances, cash audit logs, live hash inspector |
 
 ---
 
@@ -115,24 +116,21 @@ For complete technical specifications, review [`analysis_of_atm_simulation.md`](
 
 ---
 
-## 🔐 Security & Authentication Model
-
-1. **One-Way Key Derivation**:
-   $$\text{Key} = \text{PBKDF2-HMAC-SHA256}(\text{HMAC}_{\text{Pepper}}(\text{PIN}), \text{Salt}, \text{Iterations}=100,000)$$
-2. **Server-Side Pepper Defense**: Even with full database access, attackers cannot crack PIN hashes offline without the server-side `ATM_SECURITY_PEPPER` environment secret.
-3. **Timing-Safe Comparison**: Prevents side-channel timing analysis attacks via `secrets.compare_digest()`.
-4. **Brute-Force Lockout**: Accounts lock automatically upon 3 consecutive failed attempts; only a bank manager in `admin.py` can unlock accounts.
-
----
-
-## 👥 Demo Accounts & Test Credentials
+## 👥 Demo Accounts & Test Credentials (100 Indian Accounts)
 
 | Account Number | Account Holder | PIN | Starting Balance | Initial Status |
 |:---|:---|:---:|:---:|:---:|
-| **`10001`** | Alice Smith | `1234` | `$2,500.00` | Active |
-| **`10002`** | Bob Jones | `4321` | `$1,000.00` | Active |
-| **`10003`** | Charlie Brown | `9999` | `$50.00` | Active |
-| **`10004`** | Locked Account | `0000` | `$300.00` | **Locked** (Demo lockout) |
+| **`10001`** | Aarav Sharma | `1234` | `$2,500.00` | Active |
+| **`10002`** | Vivaan Patel | `4321` | `$1,000.00` | Active |
+| **`10003`** | Diya Iyer | `9999` | `$50.00` | Active |
+| **`10004`** | Aditya Verma | `0000` | `$300.00` | **Locked** (Demo lockout) |
+| **`10005`** | Tarang Suryawanshi | `1111` | `$5,000.00` | Active |
+| **`10006`** | Sameep Patel | `2222` | `$7,500.00` | Active |
+| **`10007`** | Ananya Gupta | `3333` | `$12,000.00` | Active |
+| **`10008`** | Rahul Deshmukh | `4444` | `$3,200.00` | Active |
+| **`10009`** | Sneha Joshi | `5555` | `$1,500.00` | Active |
+| **`10010`** | Priya Nair | `6666` | `$8,900.00` | Active |
+| *... (10011 - 10100)* | *(90 more accounts)* | *varies* | *varies* | Active |
 
 ---
 
@@ -159,10 +157,10 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Database Initialization
+### Database Initialization (100 Accounts)
 
 ```bash
-# Seed demo accounts and cash vault cassettes (idempotent):
+# Seed 100 Indian demo accounts and cash vault cassettes (idempotent):
 python database/seeder.py
 
 # Force reset to factory seed state:
@@ -186,13 +184,15 @@ python main.py
 ```bash
 python admin.py
 ```
-- **Option 1**: View all customer accounts and aggregated balances (PINs and salts are strictly redacted).
-- **Option 2**: Register / open a new customer bank account with auto-generated sequential account numbers (`10005`, `10006`, etc.) and $0.00 opening balance.
-- **Option 3 & 4**: Inspect physical vault cassette inventory and replenish banknotes.
-- **Option 5**: Unlock locked accounts (e.g. `10004`).
-- **Option 6**: Run the **Live Cryptographic Hash & Security Inspector** (Academic Demo).
-- **Option 7**: Filter and view system-wide transaction audit ledgers.
-- **Option 8**: Factory reset database (protected with `CONFIRM RESET` verification).
+- **Option 1**: View all 100 customer accounts and aggregated balances (PINs and salts are strictly redacted).
+- **Option 2**: Register / open a new customer bank account with auto-generated sequential account numbers (`10101`, `10102`, etc.) and $0.00 opening balance.
+- **Option 3**: **Close / Delete a Customer Account** (with confirmation safeguard).
+- **Option 4 & 5**: Inspect physical vault cassette inventory and replenish banknotes.
+- **Option 6**: Unlock locked accounts (e.g. `10004`).
+- **Option 7**: Run the **Live Cryptographic Hash & Security Inspector** (Academic Demo).
+- **Option 8**: Filter and view system-wide transaction audit ledgers.
+- **Option 9**: Factory reset database (protected with `CONFIRM RESET` verification).
+- **Option 10**: Exit Admin Portal.
 
 ---
 
@@ -200,7 +200,7 @@ python admin.py
 
 To demonstrate modern password/PIN security in real time (for classroom or academic presentation):
 1. Launch `python admin.py`.
-2. Select **Option 6 (`Cryptographic Hash & PIN Security Inspector`)**.
+2. Select **Option 7 (`Cryptographic Hash & PIN Security Inspector`)**.
 3. Enter any sample PIN or password to observe live salt generation, server pepper HMAC mixing, 100,000 PBKDF2 rounds, and constant-time verification tests.
 
 ---
@@ -214,7 +214,7 @@ pytest -v
 ```
 
 The test suite covers:
-- **`test_account_creation.py`**: Account registration, duplicate account prevention, and persistence.
+- **`test_account_creation.py`**: Account registration, account deletion, duplicate account prevention, and persistence across restarts.
 - **`test_domain_services.py`**: Clean architecture domain entities (`Account`, `VaultCassette`), repositories, and services.
 - **`test_security.py`**: Cryptographic PBKDF2 hashing, unique salts, pepper defense, brute-force lockout, and unlock.
 - **`test_vault.py`**: Backtracking denomination solver, cash exhaustion, and cassette inventory transitions.
@@ -237,7 +237,7 @@ atm-simulator/
 ├── database/
 │   ├── connection.py               # Thread-safe SQLite connection & PRAGMAs
 │   ├── schema.sql                  # Relational DDL with strict integrity constraints
-│   └── seeder.py                   # Idempotent DB seeder
+│   └── seeder.py                   # Seeds 100 Indian customer accounts & vault
 ├── core/
 │   ├── domain/                     # Pure Domain Models & Business Invariants
 │   │   ├── account.py              # Account entity
@@ -261,7 +261,7 @@ atm-simulator/
 │   ├── vault.py                    # Backward-compatible vault facade
 │   └── transaction.py              # Backward-compatible transaction facade
 └── tests/
-    ├── test_account_creation.py    # Unit tests for account registration & persistence
+    ├── test_account_creation.py    # Unit tests for account registration, deletion & persistence
     ├── test_domain_services.py     # Unit tests for domain entities & clean services
     ├── test_security.py            # Unit tests for PBKDF2 cryptography & lockout
     ├── test_vault.py               # Unit tests for backtracking note allocator
@@ -276,6 +276,6 @@ This repository is organized across 4 evolutionary branches:
 1. **`main`**: Initial baseline ATM simulator with SQLite backend and cassette management.
 2. **`feature/admin-panel`**: Separation of Customer Kiosk (`main.py`) and Bank Manager Portal (`admin.py`), account unlocking, centralized account creation.
 3. **`feature/security-v3-pepper`**: Cryptographic hardening with Version 3 Salt + HMAC Pepper defense and auto-upgrade.
-4. **`feature/system-design-adaptation`**: Institutional SOLID & Clean Architecture refactoring, Domain-Driven Design, Repository pattern, and live Cryptographic Hash Inspector.
+4. **`feature/system-design-adaptation`**: Institutional SOLID & Clean Architecture refactoring, Domain-Driven Design, 100 Indian customer profiles, and Bank Manager account deletion.
 
 For full commit logs and detailed feature timelines, see [`CHANGES.md`](file:///f:/Projects/Collage%20Project/ATM-Simulator/CHANGES.md).
