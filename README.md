@@ -143,6 +143,8 @@ The **Advanced ATM Simulator** models real-world automated banking kiosks with i
 | **`10010`** | Priya Nair | `6666` | `$8,900.00` | Active |
 | *... (10011 - 10100)* | *(90 more accounts)* | *varies* | *varies* | Active |
 
+> 📖 **Full Accounts & PIN Directory**: See [`TEST_CREDENTIALS.md`](file:///f:/Projects/Collage%20Project/ATM-Simulator/TEST_CREDENTIALS.md) for the complete list of all 100 Indian demo accounts, security PINs, starting balances, and presentation demo shortcuts.
+
 ---
 
 ## 🚀 Getting Started
