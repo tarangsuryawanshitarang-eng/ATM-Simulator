@@ -59,3 +59,10 @@ class DatabaseTransactionError(AtmBaseException):
     """Raised when a database transaction fails or encounters integrity conflicts."""
     def __init__(self, message: str = "Database transaction failed."):
         super().__init__(message, failure_reason="DATABASE_ERROR")
+
+
+class AccountAlreadyExistsException(AtmBaseException):
+    """Raised when attempting to create an account with an existing account number."""
+    def __init__(self, message: str = "Account number already exists."):
+        super().__init__(message, failure_reason="ACCOUNT_ALREADY_EXISTS")
+

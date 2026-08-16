@@ -12,8 +12,14 @@ from typing import Dict, List
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import config
-from core.exceptions import AccountNotFoundException, AtmBaseException
-from core.security import unlock_account
+from core.exceptions import (
+    AccountAlreadyExistsException,
+    AccountNotFoundException,
+    AtmBaseException,
+    InvalidAmountException,
+)
+from core.security import create_account, unlock_account
+from core.transaction import deposit
 from core.vault import get_total_vault_cash, get_vault_inventory, replenish_vault
 from database.connection import get_db_connection
 from database.seeder import seed_data
@@ -132,17 +138,121 @@ def refill_vault_cassettes() -> None:
         print(Style.YELLOW + "  [*] No changes made to vault inventory." + Style.RESET)
 
 
-def handle_unlock_account() -> None:
-    """Allows an administrator to unlock a customer account."""
-    acc_num = input("\n  Enter Account Number to UNLOCK: ").strip()
-    if not acc_num:
-        print(Style.RED + "  [-] Account number cannot be blank." + Style.RESET)
+def handle_create_account() -> None:
+    """Allows an administrator to register/open a new customer bank account with auto-generated account number."""
+    print(Style.CYAN + "\n  [ REGISTER NEW CUSTOMER ACCOUNT ]" + Style.RESET)
+
+    # Automatically generate next account number (highest numeric account number + 1)
+    conn = get_db_connection()
+    new_acc_num = "10001"
+    try:
+        cursor = conn.execute(
+            "SELECT account_number FROM accounts WHERE account_number GLOB '[0-9]*' ORDER BY CAST(account_number AS INTEGER) DESC LIMIT 1;"
+        )
+        row = cursor.fetchone()
+        if row:
+            try:
+                new_acc_num = str(int(row["account_number"]) + 1)
+            except ValueError:
+                new_acc_num = "10001"
+    finally:
+        conn.close()
+
+    print(f"  Auto-Generated Account Number : {Style.GREEN}{Style.BOLD}{new_acc_num}{Style.RESET}")
+
+    holder = input("  Enter Customer Full Name      : ").strip()
+    if not holder:
+        print(Style.RED + "  [-] Customer name cannot be blank." + Style.RESET)
+        return
+
+    pin = input("  Set 4 or 6-Digit Security PIN : ").strip()
+    if not (pin.isdigit() and len(pin) in (4, 6)):
+        print(Style.RED + "  [-] PIN must be exactly 4 or 6 numeric digits." + Style.RESET)
+        return
+
+    pin_confirm = input("  Confirm Security PIN          : ").strip()
+    if pin != pin_confirm:
+        print(Style.RED + "  [-] Security PIN and confirmation do not match." + Style.RESET)
         return
 
     conn = get_db_connection()
     try:
+        # Generate new account directly with $0.00 balance
+        new_acc = create_account(conn, new_acc_num, holder, pin, 0.0)
+        print(f"\n  ╔═══════════════════════════════════════════════════════════╗")
+        print(f"  ║        {Style.GREEN}CUSTOMER ACCOUNT CREATED SUCCESSFULLY{Style.RESET}              ║")
+        print(f"  ╠═══════════════════════════════════════════════════════════╣")
+        print(f"  ║  Account Number : {new_acc['account_number']:<39} ║")
+        print(f"  ║  Account Holder : {new_acc['account_holder']:<39} ║")
+        print(f"  ║  Opening Balance: {Style.GREEN}${new_acc['balance']:,.2f}{Style.RESET}".ljust(70) + "║")
+        print(f"  ║  Account Status : {Style.GREEN}ACTIVE{Style.RESET}".ljust(70) + "║")
+        print(f"  ╚═══════════════════════════════════════════════════════════╝")
+
+        # Inquire if customer wants to make an initial deposit
+        print(f"\n  Initial Opening Balance is $0.00.")
+        print(f"  [1] Make Cash Deposit (Multiples of $100)")
+        print(f"  [2] Finish / Return to Main Manager Menu")
+        dep_opt = input("  Select an option [1-2, Default: 2]: ").strip()
+
+        if dep_opt == "1":
+            raw_dep = input("  Enter deposit amount in multiples of $100: $").strip()
+            if raw_dep:
+                try:
+                    dep_amount = float(raw_dep)
+                    if dep_amount <= 0 or dep_amount % 100 != 0:
+                        print(Style.RED + "  [-] Deposit amount must be a positive multiple of $100." + Style.RESET)
+                    else:
+                        dep_res = deposit(conn, new_acc_num, dep_amount)
+                        print(Style.GREEN + f"\n  [+] Successfully deposited ${dep_amount:,.2f}. Updated balance: ${dep_res['new_balance']:,.2f}" + Style.RESET)
+                except (InvalidAmountException, AtmBaseException) as e:
+                    print(Style.RED + f"\n  [-] Deposit rejected: {e.message}" + Style.RESET)
+                except ValueError:
+                    print(Style.RED + "  [-] Invalid amount entered." + Style.RESET)
+    except (AccountAlreadyExistsException, InvalidAmountException, AtmBaseException) as e:
+        print(Style.RED + f"\n  [-] Account Creation Failed: {e.message}" + Style.RESET)
+    except Exception as e:
+        print(Style.RED + f"\n  [-] Unexpected error: {str(e)}" + Style.RESET)
+    finally:
+        conn.close()
+
+
+def handle_unlock_account() -> None:
+    """Allows an administrator to unlock a customer account."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.execute("SELECT account_number, account_holder FROM accounts WHERE is_locked = 1;")
+        locked_rows = cursor.fetchall()
+        if locked_rows:
+            locked_list = ", ".join([f"{r['account_number']} ({r['account_holder']})" for r in locked_rows])
+            print(Style.YELLOW + f"\n  [!] Currently locked accounts: {locked_list}" + Style.RESET)
+        else:
+            print(Style.GREEN + f"\n  [*] Notice: No accounts are currently flagged as locked." + Style.RESET)
+    finally:
+        conn.close()
+
+    acc_num = input("  Enter Account Number to UNLOCK (or press Enter to cancel): ").strip()
+    if not acc_num:
+        print(Style.YELLOW + "  [*] Unlock operation cancelled." + Style.RESET)
+        return
+
+    conn = get_db_connection()
+    try:
+        # Check current status
+        cursor = conn.execute(
+            "SELECT account_holder, is_locked FROM accounts WHERE account_number = ?;",
+            (acc_num,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            print(Style.RED + f"\n  [-] Error: Account '{acc_num}' not found in database." + Style.RESET)
+            return
+
+        if row["is_locked"] == 0:
+            print(Style.YELLOW + f"\n  [*] Account '{acc_num}' ({row['account_holder']}) is already ACTIVE (not locked)." + Style.RESET)
+            return
+
         unlock_account(conn, acc_num)
-        print(Style.GREEN + f"\n  [+] SUCCESS: Account '{acc_num}' has been UNLOCKED and failed attempts reset to 0." + Style.RESET)
+        print(Style.GREEN + f"\n  [+] SUCCESS: Account '{acc_num}' ({row['account_holder']}) has been UNLOCKED and failed PIN attempts reset to 0." + Style.RESET)
     except AccountNotFoundException as e:
         print(Style.RED + f"\n  [-] Error: {e.message}" + Style.RESET)
     except Exception as e:
@@ -271,33 +381,36 @@ def admin_main() -> None:
         print(f"  ║               BANK MANAGER CONTROL PANEL              ║")
         print(f"  ╚═══════════════════════════════════════════════════════╝")
         print(f"  [1] View All Customer Accounts & Total Balances (SQL)")
-        print(f"  [2] Inspect Physical Vault Cassette Inventory")
-        print(f"  [3] Refill / Set Vault Cassette Note Counts")
-        print(f"  [4] Unlock a Locked Customer Account")
-        print(f"  [5] Inspect Global Transaction & Security Audit Logs")
-        print(f"  [6] Reset Database to Factory Seed State (Protected)")
-        print(f"  [7] Exit Admin Portal")
+        print(f"  [2] Open / Register New Customer Account")
+        print(f"  [3] Inspect Physical Vault Cassette Inventory")
+        print(f"  [4] Refill / Set Vault Cassette Note Counts")
+        print(f"  [5] Unlock a Locked Customer Account")
+        print(f"  [6] Inspect Global Transaction & Security Audit Logs")
+        print(f"  [7] Reset Database to Factory Seed State (Protected)")
+        print(f"  [8] Exit Admin Portal")
         print("  " + "-" * 55)
 
-        choice = input("  Select an administrative action [1-7]: ").strip()
+        choice = input("  Select an administrative action [1-8]: ").strip()
 
         if choice == "1":
             view_all_accounts()
         elif choice == "2":
-            view_vault_cassettes()
+            handle_create_account()
         elif choice == "3":
-            refill_vault_cassettes()
+            view_vault_cassettes()
         elif choice == "4":
-            handle_unlock_account()
+            refill_vault_cassettes()
         elif choice == "5":
-            view_audit_logs()
+            handle_unlock_account()
         elif choice == "6":
-            reset_database_safely()
+            view_audit_logs()
         elif choice == "7":
+            reset_database_safely()
+        elif choice == "8":
             print(Style.CYAN + "\n  [+] Exiting Admin Portal. Have a great day!\n" + Style.RESET)
             break
         else:
-            print(Style.RED + "  [-] Invalid selection. Please enter a number between 1 and 7." + Style.RESET)
+            print(Style.RED + "  [-] Invalid selection. Please enter a number between 1 and 8." + Style.RESET)
 
 
 if __name__ == "__main__":
@@ -306,3 +419,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n\n  [!] Admin session cancelled by user. Exiting safely.")
         sys.exit(0)
+

@@ -5,17 +5,30 @@ and account lockout threshold enforcement.
 """
 
 import hashlib
+import hmac
+import os
 import secrets
 import sqlite3
 from typing import Any, Dict, Optional
 
 import config
 from core.exceptions import (
+    AccountAlreadyExistsException,
     AccountLockedException,
     AccountNotFoundException,
     AuthenticationFailedException,
+    InvalidAmountException,
 )
 from database.connection import immediate_transaction
+
+SECURITY_PEPPER = getattr(
+    config,
+    "SECURITY_PEPPER_V3",
+    os.environ.get(
+        "ATM_SECURITY_PEPPER",
+        "s3cr3t_ATM_p3pp3r_k3y_v3_98a7b6c5d4e3f210a8b9c0d1e2f3a4b5",
+    ),
+)
 
 
 def generate_salt() -> str:
@@ -23,32 +36,57 @@ def generate_salt() -> str:
     return secrets.token_hex(config.SALT_BYTE_LENGTH)
 
 
-def hash_pin(pin: str, salt: str) -> str:
-    """
-    Hashes a PIN string with the provided salt using PBKDF2-HMAC-SHA256.
-    Returns the hexadecimal digest.
-    """
+def hash_pin_v3(pin: str, salt: str, pepper: Optional[str] = None) -> str:
+    """Computes Version 3 PBKDF2-HMAC-SHA256 hash using a server-side pepper."""
     if not isinstance(pin, str) or not pin:
         raise ValueError("PIN must be a non-empty string.")
     if not isinstance(salt, str) or not salt:
         raise ValueError("Salt must be a non-empty string.")
 
+    active_pepper = pepper or SECURITY_PEPPER
+    peppered_digest = hmac.new(
+        key=active_pepper.encode("utf-8"),
+        msg=pin.encode("utf-8"),
+        digestmod=hashlib.sha256,
+    ).digest()
+
     derived_key = hashlib.pbkdf2_hmac(
         hash_name=config.PBKDF2_HASH_NAME,
-        password=pin.encode("utf-8"),
+        password=peppered_digest,
         salt=salt.encode("utf-8"),
         iterations=config.PBKDF2_ITERATIONS,
     )
-    return derived_key.hex()
+    return f"v3${derived_key.hex()}"
 
 
-def verify_pin(pin: str, salt: str, expected_hash: str) -> bool:
+def hash_pin(pin: str, salt: str, pepper: Optional[str] = None) -> str:
+    """Hashes a PIN string with salt and pepper."""
+    return hash_pin_v3(pin, salt, pepper)
+
+
+def verify_pin(
+    pin: str, salt: str, expected_hash: str, pepper: Optional[str] = None
+) -> bool:
     """
-    Verifies if the provided PIN matches expected_hash under the given salt.
+    Verifies if the provided PIN matches expected_hash under the given salt and pepper.
+    Supports both Version 3 (v3$) peppered hashes and legacy PBKDF2 hashes.
     Uses constant-time comparison to prevent timing attacks.
     """
-    actual_hash = hash_pin(pin, salt)
-    return secrets.compare_digest(actual_hash, expected_hash)
+    if not isinstance(expected_hash, str) or not expected_hash:
+        return False
+
+    if expected_hash.startswith("v3$"):
+        actual_hash = hash_pin_v3(pin, salt, pepper)
+        return secrets.compare_digest(actual_hash, expected_hash)
+    else:
+        # Legacy v1/v2 hash verification (unpeppered PBKDF2)
+        derived_legacy = hashlib.pbkdf2_hmac(
+            hash_name=config.PBKDF2_HASH_NAME,
+            password=pin.encode("utf-8"),
+            salt=salt.encode("utf-8"),
+            iterations=config.PBKDF2_ITERATIONS,
+        ).hex()
+        return secrets.compare_digest(derived_legacy, expected_hash)
 
 
 def authenticate_user(
@@ -198,4 +236,70 @@ def unlock_account(conn: sqlite3.Connection, account_number: str) -> bool:
             (account_number,),
         )
         return True
+
+
+def create_account(
+    conn: sqlite3.Connection,
+    account_number: str,
+    account_holder: str,
+    pin: str,
+    initial_balance: float = 0.0,
+) -> Dict[str, Any]:
+    """
+    Registers a new customer account in the database.
+    Validates account number, holder name, PIN length, and initial balance.
+    Hashes the PIN with a unique random cryptographic salt and records an audit log.
+    """
+    account_number = str(account_number).strip()
+    account_holder = str(account_holder).strip()
+
+    if not account_number:
+        raise InvalidAmountException("Account number cannot be empty.")
+    if len(account_number) < 3 or len(account_number) > 20:
+        raise InvalidAmountException("Account number must be between 3 and 20 characters.")
+    if not account_holder:
+        raise InvalidAmountException("Account holder name cannot be empty.")
+    if not (isinstance(pin, str) and pin.isdigit() and len(pin) in (4, 6)):
+        raise InvalidAmountException("PIN must be exactly 4 or 6 numeric digits.")
+    if initial_balance < 0:
+        raise InvalidAmountException("Initial balance cannot be negative.")
+
+    with immediate_transaction(conn):
+        cursor = conn.execute(
+            "SELECT account_number FROM accounts WHERE account_number = ?;",
+            (account_number,),
+        )
+        if cursor.fetchone() is not None:
+            raise AccountAlreadyExistsException(
+                f"Account number '{account_number}' already exists in the system."
+            )
+
+        salt = generate_salt()
+        pin_hash = hash_pin(pin, salt)
+
+        conn.execute(
+            """
+            INSERT INTO accounts (account_number, account_holder, pin_hash, salt, balance, is_locked, failed_attempts)
+            VALUES (?, ?, ?, ?, ?, 0, 0);
+            """,
+            (account_number, account_holder, pin_hash, salt, float(initial_balance)),
+        )
+
+        # Record initial ledger transaction
+        conn.execute(
+            """
+            INSERT INTO transactions (account_number, transaction_type, amount, status, failure_reason)
+            VALUES (?, 'DEPOSIT', ?, 'SUCCESS', 'ACCOUNT_CREATED');
+            """,
+            (account_number, float(initial_balance)),
+        )
+
+    return {
+        "account_number": account_number,
+        "account_holder": account_holder,
+        "balance": float(initial_balance),
+        "is_locked": 0,
+        "failed_attempts": 0,
+    }
+
 

@@ -171,31 +171,18 @@ class CustomerAtmSession:
             conn.close()
 
     def handle_deposit(self) -> None:
-        """Handles simplified cash deposit for the active cardholder."""
+        """Handles cash deposit for the active cardholder."""
         print("\n  ┌───────────────────────────────────────────────────────────┐")
         print("  │                       CASH DEPOSIT                        │")
-        print("  ├───────────────────────────────────────────────────────────┤")
-        print("  │  Quick Deposit:  [1] $500    [2] $1,000   [3] $2,000      │")
-        print("  │  Custom Amount:  [4] Enter Custom Amount                  │")
-        print("  │  Cancel:         [5] Return to Main Menu                  │")
         print("  └───────────────────────────────────────────────────────────┘")
-
-        quick_deposit_map = {"1": 500.0, "2": 1000.0, "3": 2000.0}
-        choice = input("  Select deposit option [1-5]: ").strip()
-
-        if choice in quick_deposit_map:
-            amount = quick_deposit_map[choice]
-        elif choice == "4":
-            raw = input("  Enter cash deposit amount (multiples of $100): $").strip()
-            try:
-                amount = float(raw)
-            except ValueError:
-                print(Style.RED + "  [-] Invalid amount. Please enter a valid number." + Style.RESET)
-                return
-        elif choice == "5":
+        raw = input("  Enter cash deposit amount in multiples of $100 (or 0 to cancel): $").strip()
+        if not raw or raw == "0":
+            print(Style.YELLOW + "  [*] Deposit cancelled." + Style.RESET)
             return
-        else:
-            print(Style.RED + "  [-] Invalid selection." + Style.RESET)
+        try:
+            amount = float(raw)
+        except ValueError:
+            print(Style.RED + "  [-] Invalid amount. Please enter a valid number." + Style.RESET)
             return
 
         if amount <= 0 or amount % 100 != 0:
@@ -327,3 +314,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n\n  [!] ATM transaction cancelled by customer. Exiting safely.")
         sys.exit(0)
+
+

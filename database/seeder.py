@@ -44,7 +44,7 @@ DEMO_ACCOUNTS = [
         "account_holder": "Locked Account",
         "pin": "0000",
         "balance": 300.0,
-        "is_locked": 1,
+        "is_locked": 0,
         "failed_attempts": 3,
     },
 ]
@@ -65,6 +65,8 @@ def seed_data(db_path: Path = config.DB_PATH, reset: bool = False) -> None:
     """
     Populates default demo accounts and cassette vault notes.
     If reset=True, clears existing data before seeding.
+    If reset=False, only inserts demo records if they do not already exist,
+    preserving all live customer account modifications, balances, and vault states.
     """
     init_database(db_path)
     conn = get_db_connection(db_path)
@@ -79,40 +81,59 @@ def seed_data(db_path: Path = config.DB_PATH, reset: bool = False) -> None:
             for acc in DEMO_ACCOUNTS:
                 salt = generate_salt()
                 pin_hash = hash_pin(acc["pin"], salt)
-                conn.execute(
-                    """
-                    INSERT INTO accounts (account_number, account_holder, pin_hash, salt, balance, is_locked, failed_attempts)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(account_number) DO UPDATE SET
-                        account_holder = excluded.account_holder,
-                        pin_hash = excluded.pin_hash,
-                        salt = excluded.salt,
-                        balance = excluded.balance,
-                        is_locked = excluded.is_locked,
-                        failed_attempts = excluded.failed_attempts;
-                    """,
-                    (
-                        acc["account_number"],
-                        acc["account_holder"],
-                        pin_hash,
-                        salt,
-                        acc["balance"],
-                        acc["is_locked"],
-                        acc["failed_attempts"],
-                    ),
-                )
+                if reset:
+                    conn.execute(
+                        """
+                        INSERT INTO accounts (account_number, account_holder, pin_hash, salt, balance, is_locked, failed_attempts)
+                        VALUES (?, ?, ?, ?, ?, ?, ?);
+                        """,
+                        (
+                            acc["account_number"],
+                            acc["account_holder"],
+                            pin_hash,
+                            salt,
+                            acc["balance"],
+                            acc["is_locked"],
+                            acc["failed_attempts"],
+                        ),
+                    )
+                else:
+                    conn.execute(
+                        """
+                        INSERT INTO accounts (account_number, account_holder, pin_hash, salt, balance, is_locked, failed_attempts)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(account_number) DO NOTHING;
+                        """,
+                        (
+                            acc["account_number"],
+                            acc["account_holder"],
+                            pin_hash,
+                            salt,
+                            acc["balance"],
+                            acc["is_locked"],
+                            acc["failed_attempts"],
+                        ),
+                    )
 
             # Seed vault cassettes
             for denom, count in config.DEFAULT_VAULT_INVENTORY.items():
-                conn.execute(
-                    """
-                    INSERT INTO cash_vault (denomination, note_count)
-                    VALUES (?, ?)
-                    ON CONFLICT(denomination) DO UPDATE SET
-                        note_count = excluded.note_count;
-                    """,
-                    (denom, count),
-                )
+                if reset:
+                    conn.execute(
+                        """
+                        INSERT INTO cash_vault (denomination, note_count)
+                        VALUES (?, ?);
+                        """,
+                        (denom, count),
+                    )
+                else:
+                    conn.execute(
+                        """
+                        INSERT INTO cash_vault (denomination, note_count)
+                        VALUES (?, ?)
+                        ON CONFLICT(denomination) DO NOTHING;
+                        """,
+                        (denom, count),
+                    )
     finally:
         conn.close()
 
