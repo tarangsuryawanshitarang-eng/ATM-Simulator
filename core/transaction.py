@@ -146,14 +146,35 @@ def withdraw(
 
 
 def deposit(
-    conn: sqlite3.Connection, account_number: str, notes: Dict[int, int]
+    conn: sqlite3.Connection, account_number: str, notes_or_amount: Any
 ) -> Dict[str, Any]:
     """
-    Executes an atomic deposit with physical note breakdown.
+    Executes an atomic deposit. Accepts either:
+      - A dictionary mapping denominations to note counts (e.g., {500: 2, 200: 1})
+      - A numeric monetary amount in multiples of $100 (e.g., 1000.0 or 1500)
     Increments vault cassette counts, credits account balance, and logs the transaction.
     """
     exception_to_raise: Optional[Exception] = None
     result: Optional[Dict[str, Any]] = None
+
+    # Handle direct numerical amount input
+    if isinstance(notes_or_amount, (int, float)):
+        amount_val = float(notes_or_amount)
+        if amount_val <= 0:
+            raise InvalidAmountException("Deposit amount must be greater than zero.")
+        if amount_val % 100 != 0:
+            raise UnsupportedDenominationException("Deposit amount must be a multiple of $100.")
+        
+        rem = int(amount_val)
+        notes: Dict[int, int] = {}
+        for d in (500, 200, 100):
+            c = rem // d
+            notes[d] = c
+            rem %= d
+    elif isinstance(notes_or_amount, dict):
+        notes = notes_or_amount
+    else:
+        raise InvalidAmountException("Invalid deposit format. Must be an amount or note breakdown.")
 
     with immediate_transaction(conn):
         account = get_account_details(conn, account_number)
