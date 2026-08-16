@@ -96,15 +96,10 @@ def show_vault_status() -> None:
 
 
 def prompt_pin(prompt_text: str = "Enter PIN: ") -> str:
-    """Prompts for PIN securely using getpass or standard input fallback."""
-    try:
-        pin = getpass.getpass(prompt_text)
-        if not pin:
-            # Fallback if getpass is empty in non-interactive environment
-            pin = input(prompt_text)
-        return pin.strip()
-    except Exception:
-        return input(prompt_text).strip()
+    """Prompts for PIN reliably across all terminal environments without freezing."""
+    pin = input(f"  {prompt_text}").strip()
+    return pin
+
 
 
 class AtmSession:
@@ -359,13 +354,12 @@ def main() -> None:
         print("  ║                   WELCOME TO THE ATM                  ║")
         print("  ╚═══════════════════════════════════════════════════════╝")
         print("  [1] Insert ATM Card (Login with Account Number & PIN)")
-        print("  [2] View Demo Accounts & Test PINs")
-        print("  [3] Check ATM Physical Cash Status")
-        print("  [4] System Administrator / Maintenance Tools")
-        print("  [5] Exit Simulator")
+        print("  [2] Check ATM Physical Cash Status")
+        print("  [3] System Administrator / Maintenance Tools")
+        print("  [4] Exit Simulator")
         print("  " + "-" * 55)
 
-        main_choice = input("  Please select an option [1-5]: ").strip()
+        main_choice = input("  Please select an option [1-4]: ").strip()
 
         if main_choice == "1":
             acc_num = input("\n  Insert Card (Enter Account Number, e.g., 10001): ").strip()
@@ -373,7 +367,7 @@ def main() -> None:
                 print(TerminalColor.RED + "  [-] Account number cannot be blank." + TerminalColor.RESET)
                 continue
 
-            pin = prompt_pin("  Enter 4-Digit Security PIN: ")
+            pin = prompt_pin("Enter 4-Digit Security PIN: ")
 
             conn = get_db_connection()
             try:
@@ -393,20 +387,18 @@ def main() -> None:
                 conn.close()
 
         elif main_choice == "2":
-            print_demo_credentials()
-
-        elif main_choice == "3":
             show_vault_status()
 
-        elif main_choice == "4":
+        elif main_choice == "3":
             admin_menu()
 
-        elif main_choice == "5":
+        elif main_choice == "4":
             print(TerminalColor.CYAN + "\n  [+] Shutting down ATM Simulator. Goodbye!\n" + TerminalColor.RESET)
             break
 
         else:
-            print(TerminalColor.RED + "  [-] Invalid option selected. Please choose 1 - 5." + TerminalColor.RESET)
+            print(TerminalColor.RED + "  [-] Invalid option selected. Please choose 1 - 4." + TerminalColor.RESET)
+
 
 
 if __name__ == "__main__":
