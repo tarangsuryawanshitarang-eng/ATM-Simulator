@@ -62,7 +62,7 @@ class TestSecuritySubsystem(unittest.TestCase):
         """Verifies successful authentication for demo account 10001."""
         account = authenticate_user(self.conn, "10001", "1234")
         self.assertEqual(account["account_number"], "10001")
-        self.assertEqual(account["account_holder"], "Alice Smith")
+        self.assertEqual(account["account_holder"], "Tarang Suryawanshi")
         self.assertEqual(account["failed_attempts"], 0)
 
         # Verify audit log recorded SUCCESS
@@ -140,6 +140,25 @@ class TestSecuritySubsystem(unittest.TestCase):
         """Verifies AccountNotFoundException when account does not exist."""
         with self.assertRaises(AccountNotFoundException):
             authenticate_user(self.conn, "99999", "1234")
+
+    def test_admin_unlock_account(self) -> None:
+        """Verifies that an administrator can unlock a locked account."""
+        from core.security import unlock_account
+
+        account_num = "10004"  # Seeded as locked
+        # Verify initially locked
+        with self.assertRaises(AccountLockedException):
+            authenticate_user(self.conn, account_num, "0000")
+
+        # Admin unlocks account
+        success = unlock_account(self.conn, account_num)
+        self.assertTrue(success)
+
+        # Verify account is now unlocked and can authenticate
+        account = authenticate_user(self.conn, account_num, "0000")
+        self.assertEqual(account["is_locked"], 0)
+        self.assertEqual(account["failed_attempts"], 0)
+
 
 
 if __name__ == "__main__":
