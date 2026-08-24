@@ -21,8 +21,15 @@ __pycache__/
 .env.*
 *.secret
 
-# IDE & OS Artifacts
+# IDE, Notes & OS Artifacts
 .vscode/
 .idea/
+.obsidian/
 .DS_Store
 Thumbs.db
+*.log
+.coverage
+htmlcov/
+
+
+analysis_of_atm_
