@@ -12,7 +12,7 @@
 
 <p align="center">
   <strong>An institutional-grade, transaction-safe Automated Teller Machine (ATM) simulation system engineered in Python and SQLite.</strong><br>
-  Featuring a cutting-edge 24-bit TrueColor Terminal User Interface (TUI), clean Object-Oriented SOLID architecture, 30 authentic Indian customer accounts, real-time masked PIN entry, live cash dispensing animations, authentic thermal paper receipts, and banking-grade PBKDF2 cryptography with HMAC Pepper defense.
+  Featuring a cutting-edge 24-bit TrueColor Terminal User Interface (TUI), clean Object-Oriented SOLID architecture, 30 customer demo accounts, real-time masked PIN entry, live cash dispensing animations, authentic thermal paper receipts, and banking-grade PBKDF2 cryptography with HMAC Pepper defense.
 </p>
 
 ---
@@ -20,41 +20,38 @@
 ## 📑 Table of Contents
 
 - [Overview](#-overview)
-- [Key Features & Visual Highlights](#-key-features--visual-highlights)
-- [System Architecture (HLD & LLD)](#-system-architecture-hld--lld)
-- [Visual Design System & TUI Components](#-visual-design-system--tui-components)
-- [SOLID Principles Implementation](#-solid-principles-implementation)
-- [Security & Authentication Model](#-security--authentication-model)
-- [Cassette & Denomination Allocation Algorithm](#-cassette--denomination-allocation-algorithm)
-- [Database Schema](#-database-schema)
-- [Demo Accounts & Test Credentials](#-demo-accounts--test-credentials)
+- [Key Features](#-key-features)
+- [System Architecture](#-system-architecture)
+- [Security & Cryptographic Model](#-security--cryptographic-model)
+- [Cash Dispenser Algorithm](#-cash-dispenser-algorithm)
+- [Database Schema & ACID Transactions](#-database-schema--acid-transactions)
 - [Getting Started](#-getting-started)
   - [Prerequisites](#prerequisites)
-  - [Installation & Virtual Environment](#installation--virtual-environment)
-  - [Database Initialization (30 Accounts)](#database-initialization-30-accounts)
+  - [Installation & Setup](#installation--setup)
+  - [Database Initialization](#database-initialization)
   - [Running the Customer ATM Kiosk](#running-the-customer-atm-kiosk)
   - [Running the Bank Manager Portal](#running-the-bank-manager-portal)
-- [Testing & Concurrency Verification](#-testing--concurrency-verification)
-- [Project Directory Tree](#-project-directory-tree)
+- [Testing Suite](#-testing-suite)
+- [Project Directory Structure](#-project-directory-structure)
 
 ---
 
 ## 🌟 Overview
 
-The **Advanced ATM Simulator** models real-world automated banking kiosks with institutional-grade engineering rigor and visually stunning terminal aesthetics. It features:
+The **Advanced ATM Simulator** models real-world automated banking kiosks with institutional-grade engineering rigor and visually stunning terminal aesthetics.
 
+### ✨ Core Capabilities:
 1. **24-bit TrueColor Terminal Interface**: High-resolution RGB gradients, cardholder dashboard widgets, status badges, and interactive thermal receipts.
-2. **Interactive Micro-Animations**: EMV chip reading simulations, motorized cash dispensing note counting, and optical vault deposit intake animations.
+2. **Interactive Micro-Animations**: EMV chip reading simulations, motorized note counting dispenser, and optical vault deposit intake animations.
 3. **Real-Time Masked PIN Input**: Real-time bullet masking (`●●●●`) with backspace support across Windows and POSIX terminals.
 4. **Deterministic Multi-Denomination Dispenser**: Solves exact physical currency note combinations (`$500`, `$200`, `$100`) using bounded backtracking.
 5. **True ACID Transaction Safety**: Enforces `BEGIN IMMEDIATE TRANSACTION;` write locks and SQLite PRAGMA busy timeouts to guarantee zero balance inconsistencies during simultaneous multi-threaded operations.
 6. **Cryptographic Protection**: Secures user PINs via **PBKDF2-HMAC-SHA256** (100,000 iterations), unique 16-byte random salts, server-side HMAC secret pepper defense, timing-safe constant-time comparisons, and automatic 3-strike brute-force lockouts.
-7. **Clean OOP & Layered Architecture**: Clear separation across Domain Entities (`Account`, `VaultCassette`), Abstract Interfaces (`IAccountRepository`, `IAuthenticationService`), Data Access Repositories (`SqliteAccountRepository`), and Domain Services (`BankingTransactionService`, `VaultManagerService`).
-8. **30 Authentic Indian Accounts**: Seeded with diverse Indian customer profiles across accounts `10001` to `10030`.
+7. **Clean Architecture & SOLID Design**: Strict separation across Domain Entities (`Account`, `VaultCassette`), Abstract Interfaces (`IAccountRepository`, `IAuthenticationService`), Data Access Repositories (`SqliteAccountRepository`), and Domain Services (`BankingTransactionService`, `VaultManagerService`).
 
 ---
 
-## ✨ Key Features & Visual Highlights
+## 🎯 Key Features
 
 | Category | Capability | Technical Implementation |
 |:---|:---|:---|
@@ -71,84 +68,86 @@ The **Advanced ATM Simulator** models real-world automated banking kiosks with i
 
 ---
 
-## 🏛️ System Architecture (HLD & LLD)
+## 🏛️ System Architecture
 
-```
-                              ┌────────────────────────────────────────────────────────┐
-                              │                   Presentation Layer                   │
-                              │        Customer ATM Terminal       Admin Portal        │
-                              │             (main.py)               (admin.py)         │
-                              └───────────┬───────────────────────────────┬────────────┘
-                                          │                               │
-                                          ▼                               ▼
-                              ┌────────────────────────────────────────────────────────┐
-                              │              TrueColor TUI Engine (core/ui/)           │
-                              │    • Components (Tables, Receipts, Masked PIN Input)   │
-                              │    • Effects (Card Reading, Note Dispensing Counters)  │
-                              │    • Theme (RGB TrueColor, Gradients, Glowing Badges)  │
-                              └───────────┬───────────────────────────────┬────────────┘
-                                          │                               │
-                                          ▼                               ▼
-                              ┌────────────────────────────────────────────────────────┐
-                              │             Service Layer (core/services/)             │
-                              │  • BankingTransactionService   • AuthenticationService │
-                              │  • VaultManagerService         • SecurityHashProvider  │
-                              └───────────────────────────┬────────────────────────────┘
-                                                          │
-                                                          ▼
-                              ┌────────────────────────────────────────────────────────┐
-                              │          Repository Interfaces (core/interfaces/)      │
-                              │   IAccountRepository   ITransactionRepo   IVaultRepo   │
-                              └───────────────────────────┬────────────────────────────┘
-                                                          │
-                                                          ▼
-                              ┌────────────────────────────────────────────────────────┐
-                              │            Data Access Layer (core/repositories/)      │
-                              │  • SqliteAccountRepository    • SqliteTransactionRepo  │
-                              │  • SqliteVaultRepository      • Domain Model Converters│
-                              └───────────────────────────┬────────────────────────────┘
-                                                          │
-                                                          ▼
-                              ┌────────────────────────────────────────────────────────┐
-                              │           SQLite3 ACID Relational Database             │
-                              │        (PRAGMA foreign_keys = ON, timeout = 5000)      │
-                              └────────────────────────────────────────────────────────┘
+```text
+┌────────────────────────────────────────────────────────┐
+│                   Presentation Layer                   │
+│        Customer ATM Terminal       Admin Portal        │
+│             (main.py)               (admin.py)         │
+└───────────┬───────────────────────────────┬────────────┘
+            │                               │
+            ▼                               ▼
+┌────────────────────────────────────────────────────────┐
+│              TrueColor TUI Engine (core/ui/)           │
+│    • Components (Tables, Receipts, Masked PIN Input)   │
+│    • Effects (Card Reading, Note Dispensing Counters)  │
+│    • Theme (RGB TrueColor, Gradients, Glowing Badges)  │
+└───────────┬───────────────────────────────┬────────────┘
+            │                               │
+            ▼                               ▼
+┌────────────────────────────────────────────────────────┐
+│             Service Layer (core/services/)             │
+│  • BankingTransactionService   • AuthenticationService │
+│  • VaultManagerService         • SecurityHashProvider  │
+└───────────────────────────┬────────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│          Repository Interfaces (core/interfaces/)      │
+│   IAccountRepository   ITransactionRepo   IVaultRepo   │
+└───────────────────────────┬────────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│            Data Access Layer (core/repositories/)      │
+│  • SqliteAccountRepository    • SqliteTransactionRepo  │
+│  • SqliteVaultRepository      • Domain Model Converters│
+└───────────────────────────┬────────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│           SQLite3 ACID Relational Database             │
+│        (PRAGMA foreign_keys = ON, timeout = 5000)      │
+└────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🔒 Security & Authentication Model
+## 🔒 Security & Cryptographic Model
 
 1. **Version 3 Cryptographic Formulations**:
-   $$\text{peppered\_key} = \text{HMAC-SHA256}(\text{key}=\text{SECRET\_PEPPER}, \text{msg}=\text{PIN})$$
-   $$\text{pin\_hash} = \text{v3\$}\ ||\ \text{PBKDF2-HMAC-SHA256}(\text{password}=\text{peppered\_key}, \text{salt}=\text{salt}, \text{iterations}=100000)$$
-2. **Salt Generation**: Cryptographically secure 16-byte random hex string (`secrets.token_hex(16)`), ensuring each user has a unique salt.
-3. **Secret Pepper Defense**: Server-side pepper stored exclusively in application memory/environment, protecting against database dumps and rainbow tables.
-4. **Constant-Time Verification**: Prevents side-channel timing attacks by using `secrets.compare_digest()`.
-5. **Lockout Policy**: Tracks `failed_attempts`. Upon 3 consecutive failures:
+   - `peppered_key = HMAC-SHA256(key=SECRET_PEPPER, message=PIN)`
+   - `pin_hash = "v3$" + PBKDF2-HMAC-SHA256(password=peppered_key, salt=salt, iterations=100000)`
+2. **Unique Cryptographic Salt**: Each account generates a 16-byte cryptographically secure random salt (`secrets.token_hex(16)`), defeating rainbow table attacks.
+3. **Server-Side Secret Pepper**: The pepper key resides strictly in application memory / configuration, ensuring hashes cannot be reversed even if the database is extracted.
+4. **Timing-Safe Constant-Time Comparison**: PIN comparisons utilize `secrets.compare_digest()` to eliminate side-channel timing attack vectors.
+5. **Brute-Force Lockout Defense**: Tracks consecutive failed authentication attempts. Upon the 3rd consecutive failed PIN:
    - Account is locked (`is_locked = 1`).
    - A `LOCKOUT` audit transaction is committed.
-   - All further attempts are rejected until unlocked by an administrator.
+   - All subsequent authentication attempts are rejected until administratively unlocked.
 
 ---
 
-## 👥 Demo Accounts & Test Credentials
+## 💵 Cash Dispenser Algorithm
 
-The database seeder pre-configures **30 authentic customer profiles** (`10001` – `10030`):
+Standard ATM implementations often rely on simple Greedy algorithms that fail when specific note denominations are depleted. 
 
-| Account Number | Account Holder | PIN | Initial Balance | Status | Note |
-| :---: | :--- | :---: | :---: | :---: | :--- |
-| `10001` | **Tarang Suryawanshi** | `1234` | $2,500.00 | 🟢 Active | Primary Account / Standard Testing |
-| `10002` | **Sameep Patel** | `4321` | $1,000.00 | 🟢 Active | Deposits & Mini-Statement Testing |
-| `10003` | **Diya Iyer** | `9999` | $50.00 | 🟢 Active | Edge Case: Insufficient Funds Denial |
-| `10004` | **Aditya Verma** | `0000` | $300.00 | 🔴 Locked | Pre-locked Demo Account (3 strikes) |
-| `10005` | **Aarav Sharma** | `1111` | $5,000.00 | 🟢 Active | Multi-note Dispensing |
-| `10006` | **Vivaan Patel** | `2222` | $7,500.00 | 🟢 Active | High Balance Cash Withdrawal |
-| `10022` | **Virat Kohli** | `1818` | $50,000.00 | 🟢 Active | High Volume Transactions |
-| `10023` | **MS Dhoni** | `0707` | $45,000.00 | 🟢 Active | High Volume Transactions |
+The **Advanced ATM Simulator** implements a recursive **Bounded Backtracking Algorithm** (`solve_denomination_allocation`):
+- Explores note allocations across physical cassettes (`$500`, `$200`, `$100`).
+- If taking a higher denomination note prevents making exact change from remaining inventory, the algorithm backtracks and evaluates alternative combinations.
+- Guarantees exact cash dispensing whenever physically possible given current cassette stock.
 
-> [!TIP]
-> For the complete 30-account login table, see **`password.md`**.
+---
+
+## 💾 Database Schema & ACID Transactions
+
+The SQLite relational database maintains strict referential integrity and write locks:
+
+- **`accounts`**: Stores account numbers, customer names, PIN hashes, salts, balances, and security lockout states.
+- **`transactions`**: Immutable audit ledger recording transaction types (`AUTHENTICATE`, `BALANCE_INQUIRY`, `WITHDRAWAL`, `DEPOSIT`, `LOCKOUT`), amounts, timestamps, and execution statuses.
+- **`cash_vault`**: Physical cassette inventory tracking denomination values and remaining note counts.
+- **Concurrency Safety**: Enforces `BEGIN IMMEDIATE TRANSACTION;` write locks and PRAGMA busy timeouts (`5000ms`) to eliminate race conditions and double-spending across parallel operations.
 
 ---
 
@@ -158,7 +157,7 @@ The database seeder pre-configures **30 authentic customer profiles** (`10001` �
 - **Python 3.10+**
 - **SQLite 3.35+**
 
-### Installation & Virtual Environment
+### Installation & Setup
 
 ```bash
 git clone https://github.com/tarangsuryawanshitarang-eng/ATM-Simulator.git
@@ -166,6 +165,7 @@ cd ATM-Simulator
 
 # Create and activate virtual environment
 python -m venv .venv
+
 # On Windows:
 .venv\Scripts\activate
 # On Linux/macOS:
@@ -175,13 +175,13 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Database Initialization (30 Accounts)
+### Database Initialization
 
 ```bash
-# Seed 30 Indian demo accounts and cash vault cassettes (idempotent):
+# Seed 30 demo accounts and cash vault cassettes (idempotent):
 python database/seeder.py
 
-# Force reset to factory seed state:
+# Force reset to clean seed state:
 python database/seeder.py --reset
 ```
 
@@ -192,8 +192,8 @@ python database/seeder.py --reset
 ```bash
 python main.py
 ```
-- Insert your Card (e.g., `10001`) and PIN (`1234` with real-time `●●●●` masking).
-- Check your balance, make fast-cash or custom withdrawals with live note counting animations, deposit cash, view your mini-statement, print receipts, or change your PIN.
+- Interactive self-service ATM terminal.
+- Features: Card insertion, real-time masked PIN entry, balance inquiry, fast cash, custom withdrawals with live note counting animations, cash deposits, mini-statements, thermal paper receipts, and PIN changes.
 
 ---
 
@@ -202,52 +202,44 @@ python main.py
 ```bash
 python admin.py
 ```
-- **Option 1**: Search & view all 30 customer accounts and aggregated balances.
-- **Option 2**: Register a new customer bank account (auto-incrementing account numbering).
-- **Option 3**: Close / Delete a customer account (with verification safeguard).
-- **Option 4 & 5**: Inspect physical vault cassette capacity gauge bars (`[████████░░] 80%`) and replenish banknotes.
-- **Option 6**: Unlock locked accounts (e.g. `10004`).
-- **Option 7**: Run the **Live Cryptographic Hash & Security Inspector** (Academic Demo).
-- **Option 8**: Filter and view system-wide transaction audit ledgers.
-- **Option 9**: Factory reset database (protected with `CONFIRM RESET` verification).
-- **Option 10**: Exit Admin Portal.
+- Dedicated administrative management dashboard.
+- Features: View account directory, open new accounts, close/delete accounts, inspect physical vault cassette capacity gauges, restock currency cassettes, unlock locked accounts, inspect cryptographic hashes, and review system audit ledgers.
 
 ---
 
-## 🧪 Testing & Concurrency Verification
+## 🧪 Testing Suite
 
-Run the comprehensive unit test suite:
+Run the full automated test suite using `pytest`:
 
 ```bash
 pytest -v
 ```
 
-The test suite covers:
-- **`test_account_creation.py`**: Account registration, account deletion, duplicate account prevention, and persistence across restarts.
-- **`test_domain_services.py`**: Clean architecture domain entities (`Account`, `VaultCassette`), repositories, and services.
-- **`test_security.py`**: Cryptographic PBKDF2 hashing, unique salts, pepper defense, brute-force lockout, and unlock.
-- **`test_vault.py`**: Backtracking denomination solver, cash exhaustion, and cassette inventory transitions.
-- **`test_concurrency.py`**: ACID write locks preventing race condition overdrafts and parallel withdrawal double-spending.
+### Test Coverage (32 Automated Tests):
+- **`tests/test_account_creation.py`**: Account registration, duplicate prevention, and restart persistence.
+- **`tests/test_domain_services.py`**: Domain entities (`Account`, `VaultCassette`), repository interfaces, and clean service layers.
+- **`tests/test_security.py`**: PBKDF2 hashing, random salt generation, secret pepper defense, lockout triggers, and unlocking.
+- **`tests/test_vault.py`**: Bounded backtracking note allocation, currency exhaustion handling, and inventory transitions.
+- **`tests/test_concurrency.py`**: Multi-threaded ACID write locking, race condition prevention, and parallel withdrawal safety.
 
 ---
 
-## 📁 Project Directory Tree
+## 📁 Project Directory Structure
 
 ```text
 ATM-Simulator/
-├── .gitignore                      # Ignores .venv, cache, and db files
-├── README.md                       # Architecture & technical documentation
+├── .gitignore                      # Git ignore rules
+├── README.md                       # System overview & documentation
 ├── requirements.txt                # Test dependencies (pytest)
 ├── main.py                         # Customer ATM terminal interface (TUI)
 ├── admin.py                        # Bank Manager dashboard + Hash Inspector (TUI)
 ├── config.py                       # Centralized configuration & constants
-├── password.md                     # Clean 30-account PIN & Password Directory
 ├── database/
 │   ├── connection.py               # Thread-safe SQLite connection & PRAGMAs
 │   ├── schema.sql                  # Relational DDL with strict integrity constraints
-│   └── seeder.py                   # Seeds 30 Indian customer accounts & vault
+│   └── seeder.py                   # Seeds 30 demo accounts & cash vault
 ├── core/
-│   ├── ui/                         # Next-Gen 24-bit TrueColor TUI Engine
+│   ├── ui/                         # 24-bit TrueColor TUI Engine
 │   │   ├── theme.py                # Gradients, ANSI TrueColor, badges & boxes
 │   │   ├── effects.py              # Micro-animations (card reader, dispenser, vault)
 │   │   └── components.py           # Masked PIN input, thermal receipts, tables & cards
@@ -269,13 +261,13 @@ ATM-Simulator/
 │   │   ├── vault.py                # VaultManagerService
 │   │   └── transaction.py          # BankingTransactionService
 │   ├── exceptions.py               # Custom domain exception hierarchy
-│   ├── security.py                 # Backward-compatible security facade
-│   ├── vault.py                    # Backward-compatible vault facade
-│   └── transaction.py              # Backward-compatible transaction facade
+│   ├── security.py                 # Security facade
+│   ├── vault.py                    # Vault facade
+│   └── transaction.py              # Transaction facade
 └── tests/
-    ├── test_account_creation.py    # Unit tests for account registration, deletion & persistence
-    ├── test_domain_services.py     # Unit tests for domain entities & clean services
-    ├── test_security.py            # Unit tests for PBKDF2 cryptography & lockout
-    ├── test_vault.py               # Unit tests for backtracking note allocator
-    └── test_concurrency.py         # ACID concurrency & race condition test suite
+    ├── test_account_creation.py    # Account creation & persistence tests
+    ├── test_domain_services.py     # Clean architecture domain & service tests
+    ├── test_security.py            # PBKDF2 cryptography & lockout tests
+    ├── test_vault.py               # Note allocation algorithm tests
+    └── test_concurrency.py         # Multi-threaded ACID concurrency tests
 ```
