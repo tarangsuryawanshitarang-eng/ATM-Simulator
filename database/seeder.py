@@ -1,6 +1,6 @@
 """
 Database Seeder for the Advanced ATM Simulator.
-Initializes tables via schema.sql and seeds 100 authentic Indian demo customer accounts
+Initializes tables via schema.sql and seeds 30 authentic Indian demo customer accounts
 and physical cash vault cassettes.
 """
 
@@ -15,7 +15,7 @@ import config
 from core.security import generate_salt, hash_pin
 from database.connection import get_db_connection, immediate_transaction
 
-# 100 Authentic Indian Demo Account Profiles
+# 30 Authentic Indian Demo Account Profiles
 INDIAN_NAMES = [
     ("Tarang Suryawanshi", "1234", 2500.0, 0, 0),   # 10001 (Lead Developer)
     ("Sameep Patel", "4321", 1000.0, 0, 0),         # 10002 (Project Partner)
@@ -47,76 +47,6 @@ INDIAN_NAMES = [
     ("KL Rahul", "0101", 24000.0, 0, 0),            # 10028
     ("Rishabh Pant", "1717", 21000.0, 0, 0),        # 10029
     ("Sanju Samson", "1414", 13000.0, 0, 0),        # 10030
-    ("Ravindra Jadeja", "0808", 31000.0, 0, 0),     # 10031
-    ("Smriti Mandhana", "1818", 27000.0, 0, 0),     # 10032
-    ("Harmanpreet Kaur", "8484", 23000.0, 0, 0),    # 10033
-    ("Mithali Raj", "0303", 30000.0, 0, 0),         # 10034
-    ("Jhulan Goswami", "2525", 26000.0, 0, 0),      # 10035
-    ("Deepti Sharma", "0606", 14000.0, 0, 0),       # 10036
-    ("Jemimah Rodrigues", "0505", 15500.0, 0, 0),   # 10037
-    ("Shafali Verma", "2828", 16500.0, 0, 0),       # 10038
-    ("Richa Ghosh", "1313", 11500.0, 0, 0),         # 10039
-    ("Pooja Vastrakar", "0909", 12500.0, 0, 0),     # 10040
-    ("Renuka Singh", "1010", 13500.0, 0, 0),        # 10041
-    ("Yuvraj Singh", "1212", 34000.0, 0, 0),        # 10042
-    ("Virender Sehwag", "4444", 32000.0, 0, 0),     # 10043
-    ("Gautam Gambhir", "0505", 29000.0, 0, 0),      # 10044
-    ("Harbhajan Singh", "0303", 27500.0, 0, 0),     # 10045
-    ("Zaheer Khan", "3434", 26500.0, 0, 0),         # 10046
-    ("Anil Kumble", "1010", 38000.0, 0, 0),         # 10047
-    ("VVS Laxman", "2810", 33000.0, 0, 0),          # 10048
-    ("Sourav Ganguly", "0808", 41000.0, 0, 0),      # 10049
-    ("Rahul Dravid", "1919", 42000.0, 0, 0),        # 10050
-    ("Kapil Dev", "1983", 48000.0, 0, 0),           # 10051
-    ("Sunil Gavaskar", "1000", 46000.0, 0, 0),      # 10052
-    ("Ravi Shastri", "1985", 36000.0, 0, 0),        # 10053
-    ("Dilip Vengsarkar", "1111", 20000.0, 0, 0),    # 10054
-    ("Chetan Sharma", "2222", 18500.0, 0, 0),       # 10055
-    ("Javagal Srinath", "3333", 22500.0, 0, 0),     # 10056
-    ("Venkatesh Prasad", "4444", 21500.0, 0, 0),    # 10057
-    ("Ashish Nehra", "6464", 24500.0, 0, 0),        # 10058
-    ("Irfan Pathan", "5656", 23500.0, 0, 0),        # 10059
-    ("Munaf Patel", "7878", 17500.0, 0, 0),         # 10060
-    ("RP Singh", "8989", 19500.0, 0, 0),            # 10061
-    ("Praveen Kumar", "1212", 16500.0, 0, 0),       # 10062
-    ("Ishant Sharma", "2929", 25500.0, 0, 0),       # 10063
-    ("Umesh Yadav", "1919", 24000.0, 0, 0),         # 10064
-    ("Mohammed Shami", "1111", 29500.0, 0, 0),      # 10065
-    ("Bhuvneshwar Kumar", "1515", 26000.0, 0, 0),   # 10066
-    ("Kuldeep Yadav", "2323", 21000.0, 0, 0),       # 10067
-    ("Yuzvendra Chahal", "0303", 22000.0, 0, 0),    # 10068
-    ("Axar Patel", "2020", 23000.0, 0, 0),          # 10069
-    ("Washington Sundar", "0505", 19000.0, 0, 0),   # 10070
-    ("Shardul Thakur", "5454", 18000.0, 0, 0),      # 10071
-    ("Deepak Chahar", "9090", 17000.0, 0, 0),       # 10072
-    ("Mohammed Siraj", "7373", 25000.0, 0, 0),      # 10073
-    ("Prasidh Krishna", "2424", 16000.0, 0, 0),     # 10074
-    ("Arshdeep Singh", "0202", 20000.0, 0, 0),      # 10075
-    ("Umran Malik", "1500", 15000.0, 0, 0),         # 10076
-    ("Avesh Khan", "6565", 14000.0, 0, 0),          # 10077
-    ("Mukesh Kumar", "4949", 13000.0, 0, 0),        # 10078
-    ("Ravi Bishnoi", "5656", 18000.0, 0, 0),        # 10079
-    ("Rinku Singh", "3535", 22000.0, 0, 0),         # 10080
-    ("Yashasvi Jaiswal", "6464", 26000.0, 0, 0),    # 10081
-    ("Tilak Varma", "0909", 19000.0, 0, 0),         # 10082
-    ("Jitesh Sharma", "9999", 15000.0, 0, 0),       # 10083
-    ("Shivam Dube", "2525", 21000.0, 0, 0),         # 10084
-    ("Dhruv Jurel", "1616", 17000.0, 0, 0),         # 10085
-    ("Sarfaraz Khan", "9797", 18500.0, 0, 0),       # 10086
-    ("Devdutt Padikkal", "3737", 16500.0, 0, 0),    # 10087
-    ("Ruturaj Gaikwad", "3131", 24000.0, 0, 0),     # 10088
-    ("Sai Sudharsan", "2323", 17500.0, 0, 0),       # 10089
-    ("Abhishek Sharma", "0404", 23500.0, 0, 0),     # 10090
-    ("Nitish Kumar Reddy", "2727", 15500.0, 0, 0),  # 10091
-    ("Mayank Yadav", "1567", 14500.0, 0, 0),        # 10092
-    ("Harshit Rana", "2222", 13500.0, 0, 0),        # 10093
-    ("Prabhsimran Singh", "8484", 12500.0, 0, 0),   # 10094
-    ("Ayush Badoni", "0202", 11500.0, 0, 0),        # 10095
-    ("Nehal Wadhera", "1818", 10500.0, 0, 0),       # 10096
-    ("Abdul Samad", "0101", 12000.0, 0, 0),         # 10097
-    ("Shahrukh Khan", "3535", 16000.0, 0, 0),       # 10098
-    ("Rahul Tewatia", "9292", 19500.0, 0, 0),       # 10099
-    ("Sai Kishore", "1111", 14000.0, 0, 0),         # 10100
 ]
 
 DEMO_ACCOUNTS: List[Dict] = [
@@ -224,4 +154,4 @@ if __name__ == "__main__":
     reset_flag = "--reset" in sys.argv
     seed_data(reset=reset_flag)
     action = "reset and seeded" if reset_flag else "seeded (idempotent)"
-    print(f"[+] Database {action} with 100 Indian customer accounts successfully at: {config.DB_PATH}")
+    print(f"[+] Database {action} with 30 Indian customer accounts successfully at: {config.DB_PATH}")
