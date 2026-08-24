@@ -16,13 +16,23 @@ __pycache__/
 *.sqlite3
 !database/schema.sql
 
-# Environment & Secret Variables
+# Environment & Sensitive Credentials
 .env
 .env.*
 *.secret
+password.md
+passwords.md
+TEST_CREDENTIALS.md
 
-# IDE & OS Artifacts
+# IDE, Notes & OS Artifacts
 .vscode/
 .idea/
+.obsidian/
 .DS_Store
 Thumbs.db
+*.log
+.coverage
+htmlcov/
+
+# Internal Reports / Analysis
+analysis_of_atm_simulation.md
