@@ -1,247 +1,167 @@
 """
-Security and Cryptography module for the Advanced ATM Simulator (Version 3).
-Implements Version 3 Cryptographic Hash Architecture:
-  - PBKDF2-HMAC-SHA256 (100,000 rounds)
-  - Cryptographically secure 16-byte unique salts
-  - Server-side Secret Pepper pre-processing via HMAC-SHA256
-  - Constant-time comparison to prevent timing attacks
-  - Account lockout threshold enforcement (>= 3 attempts)
-  - Transparent auto-migration from legacy hashes to Version 3
+Security and Cryptography Facade for the Advanced ATM Simulator.
+Provides backward-compatible functional interfaces delegating to Domain Services
+(Pbkdf2PepperHashProvider and AuthenticationService).
 """
 
-import hashlib
-import hmac
-import secrets
 import sqlite3
 from typing import Any, Dict, Optional
 
-import config
+from core.domain.account import Account
 from core.exceptions import (
+    AccountAlreadyExistsException,
     AccountLockedException,
     AccountNotFoundException,
     AuthenticationFailedException,
+    InvalidAmountException,
 )
+from core.repositories.account_repo import SqliteAccountRepository
+from core.repositories.transaction_repo import SqliteTransactionRepository
+from core.services.authentication import AuthenticationService
+from core.services.security import Pbkdf2PepperHashProvider
 from database.connection import immediate_transaction
+
+_default_hash_provider = Pbkdf2PepperHashProvider()
 
 
 def generate_salt() -> str:
     """Generates a cryptographically secure random hexadecimal salt."""
-    return secrets.token_hex(config.SALT_BYTE_LENGTH)
+    return _default_hash_provider.generate_salt()
 
 
 def hash_pin_v3(pin: str, salt: str, pepper: Optional[str] = None) -> str:
-    """
-    Version 3 Hash Function:
-    Combines PIN + Server-Side Secret Pepper (via HMAC-SHA256),
-    followed by PBKDF2-HMAC-SHA256 (100,000 iterations) with a unique 16-byte salt.
-    Returns version-tagged string: 'v3$<hex_digest>'.
-    """
-    if not isinstance(pin, str) or not pin:
-        raise ValueError("PIN must be a non-empty string.")
-    if not isinstance(salt, str) or not salt:
-        raise ValueError("Salt must be a non-empty string.")
-
-    pepper_key = (pepper or config.SECURITY_PEPPER_V3).encode("utf-8")
-    
-    # Step 1: Pre-process PIN with secret pepper via HMAC-SHA256
-    peppered_digest = hmac.new(
-        key=pepper_key,
-        msg=pin.encode("utf-8"),
-        digestmod=hashlib.sha256
-    ).digest()
-
-    # Step 2: PBKDF2-HMAC-SHA256 key derivation with unique salt
-    derived_key = hashlib.pbkdf2_hmac(
-        hash_name=config.PBKDF2_HASH_NAME,
-        password=peppered_digest,
-        salt=salt.encode("utf-8"),
-        iterations=config.PBKDF2_ITERATIONS,
-    )
-    return f"v3${derived_key.hex()}"
+    """Computes Version 3 PBKDF2-HMAC-SHA256 hash using a server-side pepper."""
+    return _default_hash_provider.hash_pin(pin, salt, pepper)
 
 
 def hash_pin(pin: str, salt: str, pepper: Optional[str] = None) -> str:
-    """Default hashing interface. Uses Version 3 cryptographic formulation."""
-    return hash_pin_v3(pin, salt, pepper)
+    """Hashes a PIN string with salt and pepper."""
+    return _default_hash_provider.hash_pin(pin, salt, pepper)
 
 
 def verify_pin(
     pin: str, salt: str, expected_hash: str, pepper: Optional[str] = None
 ) -> bool:
-    """
-    Verifies if the provided PIN matches expected_hash under the given salt and pepper.
-    Supports both Version 3 (v3$) peppered hashes and legacy PBKDF2 hashes.
-    Uses constant-time comparison to prevent timing attacks.
-    """
-    if not isinstance(expected_hash, str) or not expected_hash:
-        return False
-
-    if expected_hash.startswith("v3$"):
-        actual_hash = hash_pin_v3(pin, salt, pepper)
-        return secrets.compare_digest(actual_hash, expected_hash)
-    else:
-        # Legacy v1/v2 hash verification (unpeppered PBKDF2)
-        derived_legacy = hashlib.pbkdf2_hmac(
-            hash_name=config.PBKDF2_HASH_NAME,
-            password=pin.encode("utf-8"),
-            salt=salt.encode("utf-8"),
-            iterations=config.PBKDF2_ITERATIONS,
-        ).hex()
-        return secrets.compare_digest(derived_legacy, expected_hash)
+    """Verifies if the provided PIN matches expected_hash under constant-time check."""
+    return _default_hash_provider.verify_pin(pin, salt, expected_hash, pepper)
 
 
 def authenticate_user(
     conn: sqlite3.Connection, account_number: str, pin: str
 ) -> Dict[str, Any]:
-    """
-    Authenticates a user against the database.
-    Manages failed attempt counters, triggers immediate lockout at threshold,
-    logs authentication audit trails atomically, and auto-upgrades legacy hashes to v3.
-    """
-    account = None
+    """Authenticates user credentials and manages brute-force lockout."""
     exception_to_raise: Optional[Exception] = None
+    account_dict: Optional[Dict[str, Any]] = None
 
     with immediate_transaction(conn):
-        cursor = conn.execute(
-            """
-            SELECT account_number, account_holder, pin_hash, salt, balance, is_locked, failed_attempts
-            FROM accounts
-            WHERE account_number = ?;
-            """,
-            (account_number,),
-        )
-        row = cursor.fetchone()
+        account_repo = SqliteAccountRepository(conn)
+        tx_repo = SqliteTransactionRepository(conn)
+        auth_service = AuthenticationService(account_repo, tx_repo, _default_hash_provider)
+        try:
+            account = auth_service.authenticate(account_number, pin)
+            account_dict = {
+                "account_number": account.account_number,
+                "account_holder": account.account_holder,
+                "pin_hash": account.pin_hash,
+                "salt": account.salt,
+                "balance": account.balance,
+                "is_locked": 1 if account.is_locked else 0,
+                "failed_attempts": account.failed_attempts,
+                "created_at": account.created_at,
+            }
+        except (AuthenticationFailedException, AccountLockedException, AccountNotFoundException) as e:
+            exception_to_raise = e
 
-        if row is None:
-            exception_to_raise = AccountNotFoundException(f"Account '{account_number}' not found.")
-        else:
-            account = dict(row)
-
-            # Check if already locked
-            if account["is_locked"] == 1 or account["failed_attempts"] >= config.MAX_FAILED_ATTEMPTS:
-                if account["is_locked"] == 0:
-                    conn.execute(
-                        "UPDATE accounts SET is_locked = 1 WHERE account_number = ?;",
-                        (account_number,),
-                    )
-                conn.execute(
-                    """
-                    INSERT INTO transactions (account_number, transaction_type, amount, status, failure_reason)
-                    VALUES (?, 'AUTHENTICATE', 0.0, 'REJECTED', 'ACCOUNT_LOCKED');
-                    """,
-                    (account_number,),
-                )
-                exception_to_raise = AccountLockedException(
-                    f"Account '{account_number}' is locked due to excessive failed attempts. Please contact support."
-                )
-            else:
-                # Verify PIN (supports v3 and legacy)
-                is_valid = verify_pin(pin, account["salt"], account["pin_hash"])
-
-                if is_valid:
-                    # Auto-upgrade legacy hashes to Version 3 upon successful login
-                    if not account["pin_hash"].startswith("v3$"):
-                        new_v3_hash = hash_pin_v3(pin, account["salt"])
-                        conn.execute(
-                            "UPDATE accounts SET pin_hash = ? WHERE account_number = ?;",
-                            (new_v3_hash, account_number),
-                        )
-                        account["pin_hash"] = new_v3_hash
-
-                    # Reset failed attempts if previously incremented
-                    if account["failed_attempts"] > 0:
-                        conn.execute(
-                            "UPDATE accounts SET failed_attempts = 0 WHERE account_number = ?;",
-                            (account_number,),
-                        )
-                        account["failed_attempts"] = 0
-
-                    # Log successful authentication
-                    conn.execute(
-                        """
-                        INSERT INTO transactions (account_number, transaction_type, amount, status, failure_reason)
-                        VALUES (?, 'AUTHENTICATE', 0.0, 'SUCCESS', NULL);
-                        """,
-                        (account_number,),
-                    )
-                else:
-                    new_failed_attempts = account["failed_attempts"] + 1
-                    remaining = max(0, config.MAX_FAILED_ATTEMPTS - new_failed_attempts)
-
-                    if new_failed_attempts >= config.MAX_FAILED_ATTEMPTS:
-                        conn.execute(
-                            """
-                            UPDATE accounts 
-                            SET failed_attempts = ?, is_locked = 1 
-                            WHERE account_number = ?;
-                            """,
-                            (new_failed_attempts, account_number),
-                        )
-                        conn.execute(
-                            """
-                            INSERT INTO transactions (account_number, transaction_type, amount, status, failure_reason)
-                            VALUES (?, 'LOCKOUT', 0.0, 'REJECTED', 'EXCEEDED_MAX_FAILED_ATTEMPTS');
-                            """,
-                            (account_number,),
-                        )
-                        exception_to_raise = AccountLockedException(
-                            f"Invalid PIN. Maximum attempts ({config.MAX_FAILED_ATTEMPTS}) exceeded. Account '{account_number}' is now LOCKED."
-                        )
-                    else:
-                        conn.execute(
-                            """
-                            UPDATE accounts 
-                            SET failed_attempts = ? 
-                            WHERE account_number = ?;
-                            """,
-                            (new_failed_attempts, account_number),
-                        )
-                        conn.execute(
-                            """
-                            INSERT INTO transactions (account_number, transaction_type, amount, status, failure_reason)
-                            VALUES (?, 'AUTHENTICATE', 0.0, 'FAILED', 'INVALID_PIN');
-                            """,
-                            (account_number,),
-                        )
-                        exception_to_raise = AuthenticationFailedException(
-                            f"Invalid PIN entered. {remaining} attempt(s) remaining before account lockout.",
-                            remaining_attempts=remaining,
-                        )
-
-    # Raise domain exception after immediate_transaction commits state updates
     if exception_to_raise is not None:
         raise exception_to_raise
 
-    return account
+    return account_dict or {}
 
 
 def unlock_account(conn: sqlite3.Connection, account_number: str) -> bool:
-    """
-    Administrative function to unlock a locked customer account and reset failed attempts.
-    Logs an audit event in the transactions table.
-    """
+    """Unlocks a customer account and resets failed attempt counters."""
     with immediate_transaction(conn):
-        cursor = conn.execute(
-            "SELECT account_number, account_holder, is_locked FROM accounts WHERE account_number = ?;",
-            (account_number,),
-        )
-        row = cursor.fetchone()
-        if row is None:
-            raise AccountNotFoundException(f"Account '{account_number}' not found.")
+        account_repo = SqliteAccountRepository(conn)
+        tx_repo = SqliteTransactionRepository(conn)
+        auth_service = AuthenticationService(account_repo, tx_repo, _default_hash_provider)
+        return auth_service.unlock_account(account_number)
 
-        conn.execute(
-            """
-            UPDATE accounts 
-            SET is_locked = 0, failed_attempts = 0 
-            WHERE account_number = ?;
-            """,
-            (account_number,),
-        )
-        conn.execute(
-            """
-            INSERT INTO transactions (account_number, transaction_type, amount, status, failure_reason)
-            VALUES (?, 'AUTHENTICATE', 0.0, 'SUCCESS', 'ADMIN_UNLOCKED');
-            """,
-            (account_number,),
-        )
-        return True
+
+def create_account(
+    conn: sqlite3.Connection,
+    account_number: Optional[str] = None,
+    account_holder: str = "",
+    pin: str = "",
+    initial_balance: float = 0.0,
+) -> Dict[str, Any]:
+    """Registers a new customer account in the database."""
+    with immediate_transaction(conn):
+        account_repo = SqliteAccountRepository(conn)
+        tx_repo = SqliteTransactionRepository(conn)
+        auth_service = AuthenticationService(account_repo, tx_repo, _default_hash_provider)
+
+        # If custom account_number is provided explicitly
+        if account_number and account_number.strip():
+            acc_num = str(account_number).strip()
+            holder = str(account_holder).strip()
+            if not holder:
+                raise InvalidAmountException("Account holder name cannot be empty.")
+            if not (isinstance(pin, str) and pin.isdigit() and len(pin) in (4, 6)):
+                raise InvalidAmountException("PIN must be exactly 4 or 6 numeric digits.")
+            if initial_balance < 0:
+                raise InvalidAmountException("Initial balance cannot be negative.")
+
+            if account_repo.get_by_number(acc_num) is not None:
+                raise AccountAlreadyExistsException(
+                    f"Account number '{acc_num}' already exists in the system."
+                )
+
+            salt = _default_hash_provider.generate_salt()
+            pin_hash = _default_hash_provider.hash_pin(pin, salt)
+            acc = Account(
+                account_number=acc_num,
+                account_holder=holder,
+                pin_hash=pin_hash,
+                salt=salt,
+                balance=float(initial_balance),
+                is_locked=False,
+                failed_attempts=0,
+            )
+            account_repo.create(acc)
+            from core.domain.transaction import TransactionRecord
+
+            tx_repo.record_transaction(
+                TransactionRecord(
+                    account_number=acc_num,
+                    transaction_type="DEPOSIT",
+                    amount=float(initial_balance),
+                    status="SUCCESS",
+                    failure_reason="ACCOUNT_CREATED",
+                )
+            )
+            return {
+                "account_number": acc.account_number,
+                "account_holder": acc.account_holder,
+                "balance": acc.balance,
+                "is_locked": 0,
+                "failed_attempts": 0,
+            }
+        else:
+            acc = auth_service.create_customer_account(account_holder, pin, initial_balance)
+            return {
+                "account_number": acc.account_number,
+                "account_holder": acc.account_holder,
+                "balance": acc.balance,
+                "is_locked": 0,
+                "failed_attempts": 0,
+            }
+
+
+def delete_account(conn: sqlite3.Connection, account_number: str) -> bool:
+    """Closes and deletes a customer account and all associated transactions."""
+    with immediate_transaction(conn):
+        account_repo = SqliteAccountRepository(conn)
+        tx_repo = SqliteTransactionRepository(conn)
+        auth_service = AuthenticationService(account_repo, tx_repo, _default_hash_provider)
+        return auth_service.delete_customer_account(account_number)
+
