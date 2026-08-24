@@ -7,12 +7,12 @@
   <img src="https://img.shields.io/badge/Security-PBKDF2--SHA256--Pepper-red?style=for-the-badge" alt="PBKDF2-SHA256-Pepper"/>
   <img src="https://img.shields.io/badge/UI-24--bit_TrueColor_TUI-cyan?style=for-the-badge" alt="TrueColor TUI"/>
   <img src="https://img.shields.io/badge/Architecture-SOLID_Clean_Design-purple?style=for-the-badge" alt="SOLID Clean Design"/>
-  <img src="https://img.shields.io/badge/Tests-30%20Passing%20(100%25)-brightgreen?style=for-the-badge" alt="Tests"/>
+  <img src="https://img.shields.io/badge/Tests-32%20Passing%20(100%25)-brightgreen?style=for-the-badge" alt="Tests"/>
 </p>
 
 <p align="center">
   <strong>An institutional-grade, transaction-safe Automated Teller Machine (ATM) simulation system engineered in Python and SQLite.</strong><br>
-  Featuring a cutting-edge 24-bit TrueColor Terminal User Interface (TUI), clean Object-Oriented SOLID architecture, 100 Indian customer accounts, real-time masked PIN entry, live cash dispensing animations, authentic thermal paper receipts, and banking-grade PBKDF2 cryptography with HMAC Pepper defense.
+  Featuring a cutting-edge 24-bit TrueColor Terminal User Interface (TUI), clean Object-Oriented SOLID architecture, 30 authentic Indian customer accounts, real-time masked PIN entry, live cash dispensing animations, authentic thermal paper receipts, and banking-grade PBKDF2 cryptography with HMAC Pepper defense.
 </p>
 
 ---
@@ -31,13 +31,11 @@
 - [Getting Started](#-getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation & Virtual Environment](#installation--virtual-environment)
-  - [Database Initialization (100 Accounts)](#database-initialization-100-accounts)
+  - [Database Initialization (30 Accounts)](#database-initialization-30-accounts)
   - [Running the Customer ATM Kiosk](#running-the-customer-atm-kiosk)
   - [Running the Bank Manager Portal](#running-the-bank-manager-portal)
-  - [Live Cryptographic Hash Inspector](#live-cryptographic-hash-inspector)
 - [Testing & Concurrency Verification](#-testing--concurrency-verification)
 - [Project Directory Tree](#-project-directory-tree)
-- [Branch Evolution & Changelog](#-branch-evolution--changelog)
 
 ---
 
@@ -52,7 +50,7 @@ The **Advanced ATM Simulator** models real-world automated banking kiosks with i
 5. **True ACID Transaction Safety**: Enforces `BEGIN IMMEDIATE TRANSACTION;` write locks and SQLite PRAGMA busy timeouts to guarantee zero balance inconsistencies during simultaneous multi-threaded operations.
 6. **Cryptographic Protection**: Secures user PINs via **PBKDF2-HMAC-SHA256** (100,000 iterations), unique 16-byte random salts, server-side HMAC secret pepper defense, timing-safe constant-time comparisons, and automatic 3-strike brute-force lockouts.
 7. **Clean OOP & Layered Architecture**: Clear separation across Domain Entities (`Account`, `VaultCassette`), Abstract Interfaces (`IAccountRepository`, `IAuthenticationService`), Data Access Repositories (`SqliteAccountRepository`), and Domain Services (`BankingTransactionService`, `VaultManagerService`).
-8. **100 Authentic Indian Accounts**: Seeded with diverse Indian customer profiles across accounts `10001` to `10100`.
+8. **30 Authentic Indian Accounts**: Seeded with diverse Indian customer profiles across accounts `10001` to `10030`.
 
 ---
 
@@ -78,72 +76,79 @@ The **Advanced ATM Simulator** models real-world automated banking kiosks with i
 ```
                               ┌────────────────────────────────────────────────────────┐
                               │                   Presentation Layer                   │
-                              │   • Customer ATM Kiosk TUI (main.py)                   │
-                              │   • Bank Manager Executive Dashboard (admin.py)        │
+                              │        Customer ATM Terminal       Admin Portal        │
+                              │             (main.py)               (admin.py)         │
+                              └───────────┬───────────────────────────────┬────────────┘
+                                          │                               │
+                                          ▼                               ▼
+                              ┌────────────────────────────────────────────────────────┐
+                              │              TrueColor TUI Engine (core/ui/)           │
+                              │    • Components (Tables, Receipts, Masked PIN Input)   │
+                              │    • Effects (Card Reading, Note Dispensing Counters)  │
+                              │    • Theme (RGB TrueColor, Gradients, Glowing Badges)  │
+                              └───────────┬───────────────────────────────┬────────────┘
+                                          │                               │
+                                          ▼                               ▼
+                              ┌────────────────────────────────────────────────────────┐
+                              │             Service Layer (core/services/)             │
+                              │  • BankingTransactionService   • AuthenticationService │
+                              │  • VaultManagerService         • SecurityHashProvider  │
                               └───────────────────────────┬────────────────────────────┘
                                                           │
                                                           ▼
                               ┌────────────────────────────────────────────────────────┐
-                              │                 Domain Services Layer                  │
-                              │   • AuthenticationService (core.services.auth)         │
-                              │   • BankingTransactionService (core.services.tx)       │
-                              │   • VaultManagerService (core.services.vault)          │
-                              │   • Pbkdf2PepperHashProvider (core.services.security)  │
+                              │          Repository Interfaces (core/interfaces/)      │
+                              │   IAccountRepository   ITransactionRepo   IVaultRepo   │
                               └───────────────────────────┬────────────────────────────┘
                                                           │
-                                  ┌───────────────────────┴────────────────────────┐
-                                  ▼                                                ▼
-┌──────────────────────────────────────────────────┐    ┌──────────────────────────────────────────────────┐
-│              Domain Entities Layer               │    │             Repository Storage Layer             │
-│   • Account (core.domain.account)                │    │   • SqliteAccountRepository (core.repositories)  │
-│   • TransactionRecord (core.domain.transaction)  │    │   • SqliteTransactionRepository                  │
-│   • VaultCassette (core.domain.vault)            │    │   • SqliteVaultRepository                        │
-└──────────────────────────────────────────────────┘    └──────────────────────────┬───────────────────────┘
-                                                                                   │
-                                                                                   ▼
-                                                        ┌──────────────────────────────────────────────────┐
-                                                        │           SQLite3 Relational Database            │
-                                                        │   • PRAGMA foreign_keys = ON                     │
-                                                        │   • PRAGMA busy_timeout = 5000                   │
-                                                        └──────────────────────────────────────────────────┘
+                                                          ▼
+                              ┌────────────────────────────────────────────────────────┐
+                              │            Data Access Layer (core/repositories/)      │
+                              │  • SqliteAccountRepository    • SqliteTransactionRepo  │
+                              │  • SqliteVaultRepository      • Domain Model Converters│
+                              └───────────────────────────┬────────────────────────────┘
+                                                          │
+                                                          ▼
+                              ┌────────────────────────────────────────────────────────┐
+                              │           SQLite3 ACID Relational Database             │
+                              │        (PRAGMA foreign_keys = ON, timeout = 5000)      │
+                              └────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🎨 Visual Design System & TUI Components (`core/ui/`)
+## 🔒 Security & Authentication Model
 
-- **`core/ui/theme.py`**:
-  - `Gradient.cyan_to_emerald()`, `Gradient.gold_to_orange()`
-  - `Badge.active()`, `Badge.locked()`, `Badge.success()`, `Badge.failed()`
-- **`core/ui/effects.py`**:
-  - `animate_card_reading()`: Visual chip reading simulation.
-  - `animate_cash_dispensing()`: Multi-denomination note dispatch counting.
-  - `animate_vault_deposit()`: Note verification and optical scan intake.
-- **`core/ui/components.py`**:
-  - `prompt_masked_pin()`: Interactive real-time bullet masking (`●●●●`).
-  - `ThermalReceipt.render()`: Authentic paper receipts with barcode lines.
-  - `TableFormatter.render_table()`: Formatted tables with gradient titles and column alignment.
-  - `CardWidget.render_dashboard_card()`: Modern customer dashboard card widget.
+1. **Version 3 Cryptographic Formulations**:
+   $$\text{peppered\_key} = \text{HMAC-SHA256}(\text{key}=\text{SECRET\_PEPPER}, \text{msg}=\text{PIN})$$
+   $$\text{pin\_hash} = \text{v3\$}\ ||\ \text{PBKDF2-HMAC-SHA256}(\text{password}=\text{peppered\_key}, \text{salt}=\text{salt}, \text{iterations}=100000)$$
+2. **Salt Generation**: Cryptographically secure 16-byte random hex string (`secrets.token_hex(16)`), ensuring each user has a unique salt.
+3. **Secret Pepper Defense**: Server-side pepper stored exclusively in application memory/environment, protecting against database dumps and rainbow tables.
+4. **Constant-Time Verification**: Prevents side-channel timing attacks by using `secrets.compare_digest()`.
+5. **Lockout Policy**: Tracks `failed_attempts`. Upon 3 consecutive failures:
+   - Account is locked (`is_locked = 1`).
+   - A `LOCKOUT` audit transaction is committed.
+   - All further attempts are rejected until unlocked by an administrator.
 
 ---
 
-## 👥 Demo Accounts & Test Credentials (100 Indian Accounts)
+## 👥 Demo Accounts & Test Credentials
 
-| Account Number | Account Holder | PIN | Starting Balance | Initial Status |
-|:---|:---|:---:|:---:|:---:|
-| **`10001`** | Tarang Suryawanshi (Lead Dev) | `1234` | `$2,500.00` | Active |
-| **`10002`** | Sameep Patel (Project Partner) | `4321` | `$1,000.00` | Active |
-| **`10003`** | Diya Iyer | `9999` | `$50.00` | Active |
-| **`10004`** | Aditya Verma | `0000` | `$300.00` | **Locked** (Demo lockout) |
-| **`10005`** | Aarav Sharma | `1111` | `$5,000.00` | Active |
-| **`10006`** | Vivaan Patel | `2222` | `$7,500.00` | Active |
-| **`10007`** | Ananya Gupta | `3333` | `$12,000.00` | Active |
-| **`10008`** | Rahul Deshmukh | `4444` | `$3,200.00` | Active |
-| **`10009`** | Sneha Joshi | `5555` | `$1,500.00` | Active |
-| **`10010`** | Priya Nair | `6666` | `$8,900.00` | Active |
-| *... (10011 - 10100)* | *(90 more accounts)* | *varies* | *varies* | Active |
+The database seeder pre-configures **30 authentic customer profiles** (`10001` – `10030`):
 
-> 📖 **Full Accounts & PIN Directory**: See [`TEST_CREDENTIALS.md`](file:///f:/Projects/Collage%20Project/ATM-Simulator/TEST_CREDENTIALS.md) for the complete list of all 100 Indian demo accounts, security PINs, starting balances, and presentation demo shortcuts.
+| Account Number | Account Holder | PIN | Initial Balance | Status | Note |
+| :---: | :--- | :---: | :---: | :---: | :--- |
+| `10001` | **Tarang Suryawanshi** | `1234` | $2,500.00 | 🟢 Active | Primary Account / Standard Testing |
+| `10002` | **Sameep Patel** | `4321` | $1,000.00 | 🟢 Active | Deposits & Mini-Statement Testing |
+| `10003` | **Diya Iyer** | `9999` | $50.00 | 🟢 Active | Edge Case: Insufficient Funds Denial |
+| `10004` | **Aditya Verma** | `0000` | $300.00 | 🔴 Locked | Pre-locked Demo Account (3 strikes) |
+| `10005` | **Aarav Sharma** | `1111` | $5,000.00 | 🟢 Active | Multi-note Dispensing |
+| `10006` | **Vivaan Patel** | `2222` | $7,500.00 | 🟢 Active | High Balance Cash Withdrawal |
+| `10022` | **Virat Kohli** | `1818` | $50,000.00 | 🟢 Active | High Volume Transactions |
+| `10023` | **MS Dhoni** | `0707` | $45,000.00 | 🟢 Active | High Volume Transactions |
+
+> [!TIP]
+> For the complete 30-account login table, see **`password.md`**.
 
 ---
 
@@ -170,10 +175,10 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Database Initialization (100 Accounts)
+### Database Initialization (30 Accounts)
 
 ```bash
-# Seed 100 Indian demo accounts and cash vault cassettes (idempotent):
+# Seed 30 Indian demo accounts and cash vault cassettes (idempotent):
 python database/seeder.py
 
 # Force reset to factory seed state:
@@ -197,7 +202,7 @@ python main.py
 ```bash
 python admin.py
 ```
-- **Option 1**: Search & view all 100 customer accounts and aggregated balances.
+- **Option 1**: Search & view all 30 customer accounts and aggregated balances.
 - **Option 2**: Register a new customer bank account (auto-incrementing account numbering).
 - **Option 3**: Close / Delete a customer account (with verification safeguard).
 - **Option 4 & 5**: Inspect physical vault cassette capacity gauge bars (`[████████░░] 80%`) and replenish banknotes.
@@ -229,19 +234,18 @@ The test suite covers:
 ## 📁 Project Directory Tree
 
 ```text
-atm-simulator/
+ATM-Simulator/
 ├── .gitignore                      # Ignores .venv, cache, and db files
 ├── README.md                       # Architecture & technical documentation
-├── CHANGES.md                      # Comprehensive 5-branch project changelog
-├── analysis_of_atm_simulation.md   # SOLID & HLD/LLD system design report
 ├── requirements.txt                # Test dependencies (pytest)
 ├── main.py                         # Customer ATM terminal interface (TUI)
 ├── admin.py                        # Bank Manager dashboard + Hash Inspector (TUI)
 ├── config.py                       # Centralized configuration & constants
+├── password.md                     # Clean 30-account PIN & Password Directory
 ├── database/
 │   ├── connection.py               # Thread-safe SQLite connection & PRAGMAs
 │   ├── schema.sql                  # Relational DDL with strict integrity constraints
-│   └── seeder.py                   # Seeds 100 Indian customer accounts & vault
+│   └── seeder.py                   # Seeds 30 Indian customer accounts & vault
 ├── core/
 │   ├── ui/                         # Next-Gen 24-bit TrueColor TUI Engine
 │   │   ├── theme.py                # Gradients, ANSI TrueColor, badges & boxes
@@ -275,16 +279,3 @@ atm-simulator/
     ├── test_vault.py               # Unit tests for backtracking note allocator
     └── test_concurrency.py         # ACID concurrency & race condition test suite
 ```
-
----
-
-## 🌿 Branch Evolution & Changelog
-
-This repository is organized across 5 evolutionary branches:
-1. **`main`**: Initial baseline ATM simulator with SQLite backend and cassette management.
-2. **`feature/admin-panel`**: Separation of Customer Kiosk (`main.py`) and Bank Manager Portal (`admin.py`), account unlocking, centralized account creation.
-3. **`feature/security-v3-pepper`**: Cryptographic hardening with Version 3 Salt + HMAC Pepper defense and auto-upgrade.
-4. **`feature/system-design-adaptation`**: Institutional SOLID & Clean Architecture refactoring, Domain-Driven Design, 100 Indian customer profiles, and Bank Manager account deletion.
-5. **`feature/ui-enhancement`**: Next-Generation 24-bit TrueColor Terminal User Interface (TUI), real-time bullet PIN masking, animated cash dispensing, and authentic thermal paper receipts.
-
-For full commit logs and detailed feature timelines, see [`CHANGES.md`](file:///f:/Projects/Collage%20Project/ATM-Simulator/CHANGES.md).
