@@ -11,11 +11,20 @@ DATABASE_DIR = BASE_DIR / "database"
 DB_PATH = BASE_DIR / "atm.db"
 SCHEMA_PATH = DATABASE_DIR / "schema.sql"
 
-# Cryptographic & Security Parameters
+# Cryptographic & Security Parameters (Version 3)
+HASH_VERSION = "v3"
 PBKDF2_HASH_NAME = "sha256"
 PBKDF2_ITERATIONS = 100_000
 SALT_BYTE_LENGTH = 16
 MAX_FAILED_ATTEMPTS = 3
+
+# Server-Side Cryptographic Pepper (Never stored in database)
+import os
+SECURITY_PEPPER_V3 = os.environ.get(
+    "ATM_SECURITY_PEPPER",
+    "s3cr3t_ATM_p3pp3r_k3y_v3_98a7b6c5d4e3f210a8b9c0d1e2f3a4b5"
+)
+
 
 # Vault & Cassette Parameters
 SUPPORTED_DENOMINATIONS = (500, 200, 100)
