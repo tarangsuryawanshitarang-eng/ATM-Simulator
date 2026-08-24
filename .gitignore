@@ -16,10 +16,13 @@ __pycache__/
 *.sqlite3
 !database/schema.sql
 
-# Environment & Secret Variables
+# Environment & Sensitive Credentials
 .env
 .env.*
 *.secret
+password.md
+passwords.md
+TEST_CREDENTIALS.md
 
 # IDE, Notes & OS Artifacts
 .vscode/
@@ -31,5 +34,5 @@ Thumbs.db
 .coverage
 htmlcov/
 
-
-analysis_of_atm_
+# Internal Reports / Analysis
+analysis_of_atm_simulation.md
